@@ -8,7 +8,7 @@ import {
   Filter, Bell, Settings, Bookmark, Send, Image, MoreHorizontal,
   ChevronRight, CheckCircle2, Flame, Globe, TreePine, Utensils
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const feedPosts = [
@@ -79,12 +79,16 @@ export default function ComunitaAttivaPage() {
     return true;
   });
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "feed", label: "Bacheca", icon: Users },
+    { id: "events", label: "Eventi", icon: Calendar },
+    { id: "groups", label: "Gruppi", icon: Globe },
+    { id: "leaderboard", label: "Classifica", icon: Award },
+    { id: "profile", label: "Profilo", icon: Star },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="Comunità Attiva" accentColor="#f97316" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -150,10 +154,7 @@ export default function ComunitaAttivaPage() {
             </div>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ FEED ═══ */}
         {page === "feed" && (
@@ -555,7 +556,6 @@ export default function ComunitaAttivaPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

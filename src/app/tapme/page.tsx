@@ -7,7 +7,7 @@ import {
   Zap, Users, Settings, Target, Crown, Share2,
   Clock, ChevronRight
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const feed = [
@@ -72,12 +72,16 @@ export default function TapMePage() {
     }, 1000);
   };
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "feed", label: "Feed", icon: Flame },
+    { id: "play", label: "Gioca!", icon: MousePointerClick },
+    { id: "challenges", label: "Sfide", icon: Trophy },
+    { id: "leaderboard", label: "Classifica", icon: Crown },
+    { id: "profile", label: "Profilo", icon: Star },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="TapMe!" accentColor="#06b6d4" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -145,10 +149,7 @@ export default function TapMePage() {
             <button className="text-muted-foreground hover:text-foreground"><Settings className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ FEED ═══ */}
         {page === "feed" && (
@@ -378,7 +379,7 @@ export default function TapMePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
                     { l: "Partite", v: "342", icon: MousePointerClick, color: "#06b6d4" },
                     { l: "Vittorie", v: "89", icon: Trophy, color: "#f59e0b" },
@@ -430,7 +431,6 @@ export default function TapMePage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

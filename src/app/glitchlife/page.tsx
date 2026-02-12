@@ -6,7 +6,7 @@ import {
   ArrowLeft, Wand2, Sparkles, Camera, Share2, Heart, Eye, Download,
   Layers, Settings, TrendingUp, Star, Bookmark
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const experiences = [
@@ -57,12 +57,15 @@ export default function GlitchLifePage() {
   const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
   const [selectedExp, setSelectedExp] = useState<typeof experiences[0] | null>(null);
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "explore", label: "Esplora", icon: Sparkles },
+    { id: "create", label: "Crea", icon: Wand2 },
+    { id: "my_creations", label: "Le Mie", icon: Layers },
+    { id: "trending", label: "Trending", icon: TrendingUp },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="GlitchLife" accentColor="#d946ef" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -136,10 +139,7 @@ export default function GlitchLifePage() {
             <button className="text-muted-foreground hover:text-foreground"><Settings className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ EXPLORE ═══ */}
         {page === "explore" && (
@@ -371,7 +371,7 @@ export default function GlitchLifePage() {
             <h2 className="text-lg font-bold mb-1">Trending</h2>
             <p className="text-xs text-muted-foreground mb-6">Le esperienze più popolari</p>
 
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {trending.map((t, i) => (
                 <div key={t.tag} className="bg-card border border-border rounded-2xl p-4 text-center hover:border-fuchsia-500/30 cursor-pointer transition-colors">
                   <p className="text-2xl font-black text-fuchsia-400">#{i + 1}</p>
@@ -401,7 +401,6 @@ export default function GlitchLifePage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

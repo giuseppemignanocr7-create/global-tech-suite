@@ -7,7 +7,7 @@ import {
   Trash2, Settings, Link2, Key, AlertTriangle, CheckCircle2,
   Users
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const conversations = [
@@ -62,12 +62,15 @@ export default function ShhPage() {
 
   const totalUnread = conversations.reduce((s, c) => s + c.unread, 0);
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "chats", label: "Chat", icon: Lock },
+    { id: "create", label: "Nuova", icon: Plus },
+    { id: "security", label: "Sicurezza", icon: Shield },
+    { id: "settings", label: "Opzioni", icon: Settings },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="Shh..." accentColor="#10b981" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -138,10 +141,7 @@ export default function ShhPage() {
             <span>AES-256 • Zero-Knowledge • GDPR</span>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ CHATS LIST ═══ */}
         {page === "chats" && (
@@ -270,7 +270,7 @@ export default function ShhPage() {
                 <div className="space-y-4 text-left">
                   <div>
                     <label className="text-xs text-muted-foreground block mb-2">Timer autodistruzione</label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {timerOptions.map(t => (
                         <button key={t.value} onClick={() => setSelectedTimer(t.value)}
                           className={`p-3 rounded-xl border text-center transition-colors ${selectedTimer === t.value ? "border-emerald-500/40 bg-emerald-500/5" : "border-border hover:border-emerald-500/20"}`}>
@@ -407,7 +407,6 @@ export default function ShhPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

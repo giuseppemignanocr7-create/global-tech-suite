@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, Plus, Settings, User, BarChart3,
   Clock, Target, Award, MessageCircle, Flower2, Coffee, Music, Star
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const moods = [
@@ -170,13 +170,16 @@ export default function MenteSerenaPage() {
     setDiaryNote("");
   };
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
-      {activeBreathing && <BreathingCircle exercise={activeBreathing} onClose={() => setActiveBreathing(null)} />}
+  const mobileNav = [
+    { id: "chat", label: "Chat", icon: MessageCircle },
+    { id: "diary", label: "Diario", icon: BookOpen },
+    { id: "breathing", label: "Respira", icon: Wind },
+    { id: "sounds", label: "Suoni", icon: Volume2 },
+    { id: "analytics", label: "Analisi", icon: BarChart3 },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="Mente Serena" accentColor="#ef4444" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -239,10 +242,8 @@ export default function MenteSerenaPage() {
             <button className="text-muted-foreground hover:text-foreground"><Settings className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN CONTENT ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
+      {activeBreathing && <BreathingCircle exercise={activeBreathing} onClose={() => setActiveBreathing(null)} />}
 
         {/* ═══ CHAT ═══ */}
         {page === "chat" && (
@@ -553,7 +554,7 @@ export default function MenteSerenaPage() {
             <p className="text-xs text-muted-foreground mb-6">Comprendi i tuoi pattern emotivi</p>
 
             {/* KPIs */}
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {[
                 { label: "Media Umore", value: "3.0", sub: "questa settimana", color: "#8b5cf6" },
                 { label: "Trend", value: "+15%", sub: "vs settimana scorsa", color: "#22c55e" },
@@ -683,7 +684,6 @@ export default function MenteSerenaPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

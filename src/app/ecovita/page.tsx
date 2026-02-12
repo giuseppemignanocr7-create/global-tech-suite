@@ -8,7 +8,7 @@ import {
   TrendingUp, Calendar, MapPin, Heart, Sparkles, Gift, Shield,
   CheckCircle2, Clock, ArrowRight, Footprints, Sun, Wind
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const missions = [
@@ -80,12 +80,16 @@ export default function EcoVitaPage() {
   const completedMissions = missions.filter(m => m.completed).length;
   const levelProgress = Math.round((totalPoints / nextLevel) * 100);
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "dashboard", label: "Home", icon: BarChart3 },
+    { id: "missions", label: "Missioni", icon: Target },
+    { id: "leaderboard", label: "Classifica", icon: Trophy },
+    { id: "badges", label: "Badge", icon: Award },
+    { id: "impact", label: "Impatto", icon: TrendingUp },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="EcoVita" accentColor="#22c55e" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -150,10 +154,7 @@ export default function EcoVitaPage() {
             <button className="text-muted-foreground hover:text-foreground"><Settings className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ DASHBOARD ═══ */}
         {page === "dashboard" && (
@@ -198,7 +199,7 @@ export default function EcoVitaPage() {
             </div>
 
             {/* ESG Metrics */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {esgMetrics.map(m => {
                 const Icon = m.icon;
                 return (
@@ -396,7 +397,7 @@ export default function EcoVitaPage() {
             <h2 className="text-lg font-bold mb-1">Badge & Riconoscimenti</h2>
             <p className="text-xs text-muted-foreground mb-6">{badges.filter(b => b.earned).length}/{badges.length} badge ottenuti</p>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-2 md:grid-cols-4 gap-4">
               {badges.map((b, i) => (
                 <div key={i} className={`rounded-2xl p-5 text-center transition-all ${b.earned ? "bg-card border border-green-500/30 shadow-lg shadow-green-500/5" : "bg-card/50 border border-border opacity-50"}`}>
                   <div className={`w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl ${b.earned ? "bg-green-500/10 border border-green-500/20" : "bg-muted"}`}>
@@ -478,7 +479,6 @@ export default function EcoVitaPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

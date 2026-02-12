@@ -7,7 +7,7 @@ import {
   Meh, Eye, Heart, Settings, TrendingUp, Clock, Sparkles, Activity,
   CheckCircle2, RefreshCw, Download, Zap
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const emotions = [
@@ -57,12 +57,15 @@ export default function ReaFacePage() {
     }, 2500);
   };
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "scan", label: "Analisi", icon: Camera },
+    { id: "history", label: "Storico", icon: Clock },
+    { id: "trends", label: "Trend", icon: TrendingUp },
+    { id: "settings", label: "Opzioni", icon: Settings },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="ReaFace" accentColor="#6366f1" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -125,10 +128,7 @@ export default function ReaFacePage() {
             ))}
           </div>
         </nav>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ SCAN ═══ */}
         {page === "scan" && (
@@ -426,7 +426,6 @@ export default function ReaFacePage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

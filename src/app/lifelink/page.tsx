@@ -10,7 +10,7 @@ import {
   Wrench, Baby, BookOpen, PawPrint, Truck, Dumbbell, Sparkles,
   X, ChevronDown, AlertCircle
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const categories = [
@@ -114,12 +114,15 @@ export default function LifeLinkPage() {
 
   const days = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "explore", label: "Esplora", icon: Search },
+    { id: "bookings", label: "Prenotazioni", icon: Calendar },
+    { id: "chat", label: "Messaggi", icon: MessageCircle },
+    { id: "notifications", label: "Notifiche", icon: Bell },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="LifeLink" accentColor="#ec4899" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         {/* Logo */}
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
@@ -194,10 +197,7 @@ export default function LifeLinkPage() {
             <button className="text-muted-foreground hover:text-foreground"><Settings className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN CONTENT ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ EXPLORE PAGE ═══ */}
         {page === "explore" && (
@@ -219,7 +219,7 @@ export default function LifeLinkPage() {
             </div>
 
             {/* Stats row */}
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {[
                 { label: "Provider attivi", value: "48", sub: "nella tua zona" },
                 { label: "Tempo risposta", value: "~8 min", sub: "media" },
@@ -473,7 +473,7 @@ export default function LifeLinkPage() {
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground block mb-2">Orario</label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {["09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00", "18:00"].map((t, i) => (
                       <button key={t} className={`py-2.5 rounded-xl text-sm font-medium transition-colors ${i === 4 ? "bg-pink-500 text-white" : "bg-muted text-muted-foreground hover:bg-pink-500/10 hover:text-pink-400"}`}>{t}</button>
                     ))}
@@ -769,7 +769,6 @@ export default function LifeLinkPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

@@ -8,7 +8,7 @@ import {
   Users, DollarSign, Eye, Calendar, ArrowRight,
   CheckCircle2, RefreshCw, Share2
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const campaigns = [
@@ -72,12 +72,16 @@ export default function AIMarketingPage() {
   const totalConversions = campaigns.reduce((s, c) => s + c.conversions, 0);
   const activeCampaigns = campaigns.filter(c => c.status === "attiva").length;
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "dashboard", label: "Home", icon: BarChart3 },
+    { id: "campaigns", label: "Campagne", icon: Megaphone },
+    { id: "analytics", label: "Analytics", icon: TrendingUp },
+    { id: "copywriter", label: "AI Copy", icon: PenTool },
+    { id: "audiences", label: "Audience", icon: Users },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="AI Marketing" accentColor="#ec4899" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -151,10 +155,7 @@ export default function AIMarketingPage() {
             </div>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ DASHBOARD ═══ */}
         {page === "dashboard" && (
@@ -163,7 +164,7 @@ export default function AIMarketingPage() {
             <p className="text-xs text-muted-foreground mb-6">Panoramica performance e campagne attive</p>
 
             {/* KPI cards */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {kpiData.map(k => {
                 const Icon = k.icon;
                 return (
@@ -334,7 +335,7 @@ export default function AIMarketingPage() {
             <h2 className="text-lg font-bold mb-1">Analytics</h2>
             <p className="text-xs text-muted-foreground mb-6">Analisi dettagliata delle performance marketing</p>
 
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {kpiData.map(k => {
                 const Icon = k.icon;
                 return (
@@ -607,7 +608,6 @@ export default function AIMarketingPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

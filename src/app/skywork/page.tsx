@@ -9,7 +9,7 @@ import {
   Target, Workflow,
   FileText
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const agents = [
@@ -75,12 +75,16 @@ export default function SkyWorkPage() {
     }, 1000);
   };
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "dashboard", label: "Home", icon: BarChart3 },
+    { id: "agents", label: "Agenti", icon: Bot },
+    { id: "chat", label: "Chat", icon: MessageSquare },
+    { id: "workflows", label: "Workflow", icon: Workflow },
+    { id: "tasks", label: "Task", icon: Zap },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="SkyWork" accentColor="#f59e0b" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -158,10 +162,7 @@ export default function SkyWorkPage() {
             <button className="text-muted-foreground hover:text-foreground"><Settings className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ DASHBOARD ═══ */}
         {page === "dashboard" && (
@@ -170,7 +171,7 @@ export default function SkyWorkPage() {
             <p className="text-xs text-muted-foreground mb-6">Panoramica agenti e automazione aziendale</p>
 
             {/* KPIs */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
                 { label: "Agenti Attivi", value: `${activeAgents}/${agents.length}`, icon: Bot, color: "#f59e0b", sub: "1 in pausa" },
                 { label: "Task Completati", value: `${totalCompleted}/${totalTasks}`, icon: CheckCircle2, color: "#22c55e", sub: `${Math.round((totalCompleted / totalTasks) * 100)}% completamento` },
@@ -303,7 +304,7 @@ export default function SkyWorkPage() {
                     </div>
                     <p className="text-xs text-muted-foreground mb-4">{a.desc}</p>
 
-                    <div className="grid grid-cols-4 gap-2 mb-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
                       {[
                         { l: "Task", v: `${a.completed}/${a.tasks}` },
                         { l: "Uptime", v: a.uptime },
@@ -498,7 +499,6 @@ export default function SkyWorkPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

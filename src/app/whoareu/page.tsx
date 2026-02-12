@@ -7,7 +7,7 @@ import {
   RefreshCw, Settings, Users, Heart, Lightbulb,
   TrendingUp, Share2, Download, CheckCircle2, Compass, Zap
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const quizQuestions = [
@@ -91,12 +91,15 @@ export default function WhoAreUPage() {
     setPage("quiz");
   };
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "quiz", label: "Quiz", icon: Brain },
+    { id: "profile", label: "Profilo", icon: UserSearch },
+    { id: "insights", label: "Insights", icon: Sparkles },
+    { id: "compare", label: "Confronta", icon: Users },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="WhoAreU" accentColor="#8b5cf6" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -170,10 +173,7 @@ export default function WhoAreUPage() {
             <button className="text-muted-foreground hover:text-foreground"><Settings className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ QUIZ ═══ */}
         {page === "quiz" && !quizDone && !analyzing && (
@@ -433,7 +433,6 @@ export default function WhoAreUPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

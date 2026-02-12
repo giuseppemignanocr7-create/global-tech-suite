@@ -8,7 +8,7 @@ import {
   Wifi, Speaker, Tv, Coffee, WashingMachine, Fan, Plus, Play,
   CheckCircle2, TrendingDown, BarChart3, Snowflake
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const rooms = [
@@ -78,12 +78,16 @@ export default function CasaSmartPage() {
   const activeDevices = Object.values(deviceStates).filter(Boolean).length;
   const totalConsumption = devices.reduce((s, d) => s + (deviceStates[d.id] ? d.consumption : 0), 0).toFixed(1);
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "dashboard", label: "Home", icon: Home },
+    { id: "rooms", label: "Stanze", icon: BarChart3 },
+    { id: "scenes", label: "Scene", icon: Play },
+    { id: "energy", label: "Energia", icon: Zap },
+    { id: "security", label: "Sicurezza", icon: Shield },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="Casa Smart" accentColor="#8b5cf6" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -171,10 +175,7 @@ export default function CasaSmartPage() {
             <button className="text-muted-foreground hover:text-foreground"><Settings className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ DASHBOARD ═══ */}
         {page === "dashboard" && (
@@ -183,7 +184,7 @@ export default function CasaSmartPage() {
             <p className="text-xs text-muted-foreground mb-6">Panoramica della tua casa smart</p>
 
             {/* Quick stats */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
                 { label: "Temperatura", value: "22°C", icon: Thermometer, color: "#ef4444", sub: "Media casa" },
                 { label: "Umidità", value: "48%", icon: Droplets, color: "#3b82f6", sub: "Nella norma" },
@@ -576,7 +577,6 @@ export default function CasaSmartPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

@@ -9,7 +9,7 @@ import {
   Printer, Share2, MoreVertical, ArrowRight, Shield, Landmark, FolderOpen,
   Bell, User, Hash, Tag, CircleDot, Columns3
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const practices = [
@@ -75,12 +75,15 @@ export default function PAOnePage() {
 
   const openDetail = (p: typeof practices[0]) => { setSelectedPractice(p); setDetailTab("info"); setPage("detail"); };
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "dashboard", label: "Home", icon: BarChart3 },
+    { id: "list", label: "Pratiche", icon: FolderOpen },
+    { id: "create", label: "Nuova", icon: Plus },
+    { id: "audit", label: "Audit", icon: Eye },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="PA.ONE" accentColor="#3b82f6" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -145,10 +148,7 @@ export default function PAOnePage() {
             <button className="text-muted-foreground hover:text-foreground"><Settings className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ DASHBOARD ═══ */}
         {page === "dashboard" && (
@@ -165,7 +165,7 @@ export default function PAOnePage() {
             </div>
 
             {/* Stats cards */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {Object.entries(statusConfig).map(([key, cfg]) => {
                 const count = practices.filter(p => p.status === key).length;
                 const Icon = cfg.icon;
@@ -323,7 +323,7 @@ export default function PAOnePage() {
             )}
 
             {viewMode === "kanban" && (
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {kanbanStatuses.map(status => {
                   const cfg = statusConfig[status];
                   const items = filtered.filter(p => p.status === status);
@@ -641,7 +641,6 @@ export default function PAOnePage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

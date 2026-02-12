@@ -9,7 +9,7 @@ import {
   MessageSquare, Phone, Video, Globe, Sparkles, Mic, MousePointer,
   ZoomIn, Keyboard, Monitor, ArrowRight, ToggleLeft, ToggleRight
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const delegates = [
@@ -73,12 +73,17 @@ export default function InclusioneBridgePage() {
 
   const openDetail = (d: typeof delegates[0]) => { setSelectedDelegate(d); setPage("detail"); };
 
-  return (
-    <div className={`min-h-screen bg-background flex ${highContrast ? "contrast-more" : ""}`} style={{ fontSize: `${fontSize}px` }}>
-      <DemoBadge />
+  const mobileNav = [
+    { id: "dashboard", label: "Home", icon: BarChart3 },
+    { id: "delegates", label: "Deleghe", icon: Shield },
+    { id: "services", label: "Servizi", icon: Heart },
+    { id: "tools", label: "Strumenti", icon: Hand },
+    { id: "accessibility", label: "Report", icon: Eye },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-72 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <div className={highContrast ? "contrast-more" : ""} style={{ fontSize: `${fontSize}px` }}>
+    <MobileAppLayout appName="Inclusione Bridge" accentColor="#6366f1" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -159,10 +164,7 @@ export default function InclusioneBridgePage() {
             <button className="text-muted-foreground hover:text-foreground"><Settings className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ DASHBOARD ═══ */}
         {page === "dashboard" && (
@@ -188,7 +190,7 @@ export default function InclusioneBridgePage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
                 { label: "Deleghe Attive", value: delegates.filter(d => d.status === "attiva").length, color: "#6366f1", icon: Shield },
                 { label: "In Revisione", value: delegates.filter(d => d.status === "in_revisione").length, color: "#f59e0b", icon: Clock },
@@ -597,7 +599,7 @@ export default function InclusioneBridgePage() {
             </div>
           </div>
         )}
-      </main>
+    </MobileAppLayout>
     </div>
   );
 }

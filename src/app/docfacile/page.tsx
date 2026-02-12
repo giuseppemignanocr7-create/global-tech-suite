@@ -8,7 +8,7 @@ import {
   Printer, Share2, MoreVertical, Copy, Trash2, Edit3, Sparkles, Shield,
   ChevronRight, Upload, Tag, Star, Zap, BookOpen
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const templates = [
@@ -69,12 +69,15 @@ export default function DocFacilePage() {
 
   const openPreview = (d: typeof documents[0]) => { setSelectedDoc(d); setPage("preview"); };
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "dashboard", label: "Home", icon: BarChart3 },
+    { id: "documents", label: "Documenti", icon: FolderOpen },
+    { id: "templates", label: "Template", icon: BookOpen },
+    { id: "create", label: "Crea", icon: Plus },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="DocFacile" accentColor="#10b981" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -145,10 +148,7 @@ export default function DocFacilePage() {
             <button className="text-muted-foreground hover:text-foreground"><Settings className="w-3.5 h-3.5" /></button>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ DASHBOARD ═══ */}
         {page === "dashboard" && (
@@ -157,7 +157,7 @@ export default function DocFacilePage() {
             <p className="text-xs text-muted-foreground mb-6">Panoramica dei tuoi documenti</p>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
                 { label: "Totale", value: documents.length, color: "#10b981", icon: FileText },
                 { label: "Firmati", value: documents.filter(d => d.status === "firmato").length, color: "#22c55e", icon: CheckCircle2 },
@@ -219,7 +219,7 @@ export default function DocFacilePage() {
                 <h3 className="font-semibold text-sm">Template Popolari</h3>
                 <button onClick={() => setPage("templates")} className="text-xs text-emerald-400 hover:underline">Vedi tutti</button>
               </div>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {templates.filter(t => t.popular).map(t => (
                   <div key={t.id} onClick={() => { setSelectedTemplate(t); setStep(0); setPage("create"); }} className="p-4 rounded-xl border border-border hover:border-emerald-500/30 cursor-pointer transition-colors text-center">
                     <span className="text-2xl">{t.icon}</span>
@@ -592,7 +592,6 @@ export default function DocFacilePage() {
             )}
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }

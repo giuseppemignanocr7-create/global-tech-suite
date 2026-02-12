@@ -10,6 +10,7 @@ import {
   Cpu, Globe
 } from "lucide-react";
 import DemoBadge from "@/components/DemoBadge";
+import { Menu } from "lucide-react";
 
 /* ───────── DATA ───────── */
 const fileTree = [
@@ -187,12 +188,28 @@ export default function AIDevStudioPage() {
 
   const codeLines = generatedCode.split("\n");
 
+  const mobileNav = [
+    { key: "ide" as Page, icon: FileCode, label: "Editor" },
+    { key: "preview" as Page, icon: Eye, label: "Preview" },
+    { key: "projects" as Page, icon: FolderTree, label: "Progetti" },
+    { key: "terminal" as Page, icon: Terminal, label: "Terminal" },
+  ];
+
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
       <DemoBadge />
 
+      {/* ── Mobile top header ── */}
+      <header className="lg:hidden sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-2.5 flex items-center gap-3">
+        <Link href="/" className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+          <Code2 className="w-3.5 h-3.5 text-white" />
+        </Link>
+        <span className="text-sm font-bold text-amber-400">AI DevStudio</span>
+        <span className="text-xs text-muted-foreground">{mobileNav.find(n => n.key === page)?.label}</span>
+      </header>
+
       {/* ─── ACTIVITY BAR (VS Code style narrow bar) ─── */}
-      <div className="w-12 bg-card border-r border-border flex flex-col items-center py-2 gap-1 shrink-0">
+      <div className="hidden lg:flex w-12 bg-card border-r border-border flex-col items-center py-2 gap-1 shrink-0">
         <Link href="/" className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-2">
           <Code2 className="w-4 h-4 text-white" />
         </Link>
@@ -221,7 +238,7 @@ export default function AIDevStudioPage() {
 
       {/* ─── FILE EXPLORER ─── */}
       {page === "ide" && (
-        <aside className="w-56 border-r border-border bg-card/50 flex flex-col shrink-0">
+        <aside className="hidden lg:flex w-56 border-r border-border bg-card/50 flex-col shrink-0">
           <div className="p-2 border-b border-border flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1">Explorer</span>
             <div className="flex gap-0.5">
@@ -310,7 +327,7 @@ export default function AIDevStudioPage() {
       )}
 
       {/* ─── MAIN CONTENT ─── */}
-      <main className="flex-1 min-h-screen flex flex-col overflow-hidden">
+      <main className="flex-1 min-w-0 pb-16 lg:pb-0 flex flex-col overflow-hidden">
 
         {/* ═══ IDE ═══ */}
         {page === "ide" && (
@@ -560,6 +577,22 @@ export default function AIDevStudioPage() {
           </div>
         )}
       </main>
+
+      {/* ── Mobile bottom nav ── */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-md border-t border-border">
+        <div className="flex justify-around items-center py-1.5 px-1">
+          {mobileNav.map(item => {
+            const Icon = item.icon;
+            const active = page === item.key;
+            return (
+              <button key={item.key} onClick={() => setPage(item.key)} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all ${active ? "text-amber-400" : "text-muted-foreground"}`}>
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }

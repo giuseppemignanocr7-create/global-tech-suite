@@ -8,7 +8,7 @@ import {
   Navigation, Eye, ChevronRight, Zap, Radio, Signal, Thermometer,
   Wind, CloudRain, RefreshCw
 } from "lucide-react";
-import DemoBadge from "@/components/DemoBadge";
+import MobileAppLayout from "@/components/MobileAppLayout";
 
 /* ───────── DATA ───────── */
 const transportData = [
@@ -60,12 +60,16 @@ export default function MobilitaPlusPage() {
   const avgLoad = Math.round(transportData.reduce((s, t) => s + t.load, 0) / transportData.length);
   const criticalLines = transportData.filter(t => t.status === "critico").length;
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      <DemoBadge />
+  const mobileNav = [
+    { id: "dashboard", label: "Home", icon: BarChart3 },
+    { id: "lines", label: "Linee", icon: Train },
+    { id: "predictions", label: "AI", icon: Sparkles },
+    { id: "flows", label: "Flussi", icon: Activity },
+    { id: "heatmap", label: "Mappa", icon: Navigation },
+  ];
 
-      {/* ─── SIDEBAR ─── */}
-      <aside className="w-64 border-r border-border bg-card/50 flex flex-col shrink-0 sticky top-0 h-screen">
+  return (
+    <MobileAppLayout appName="Mobilit\u00e0+" accentColor="#06b6d4" navItems={mobileNav} activePage={page} onPageChange={(p) => setPage(p as Page)} sidebar={<>
         <div className="p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-xs mb-3">
             <ArrowLeft className="w-3 h-3" />Portale
@@ -143,10 +147,7 @@ export default function MobilitaPlusPage() {
             <span className="flex items-center gap-1"><CloudRain className="w-3 h-3" />Sereno</span>
           </div>
         </div>
-      </aside>
-
-      {/* ─── MAIN ─── */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      </>}>
 
         {/* ═══ DASHBOARD ═══ */}
         {page === "dashboard" && (
@@ -164,7 +165,7 @@ export default function MobilitaPlusPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
                 { label: "Passeggeri Oggi", value: `${(totalPassengers / 1000).toFixed(1)}K`, color: "#06b6d4", icon: Users, sub: "+8% vs ieri" },
                 { label: "Ritardo Medio", value: `${avgDelay} min`, color: "#f59e0b", icon: Clock, sub: "-15% vs ieri" },
@@ -310,7 +311,7 @@ export default function MobilitaPlusPage() {
                   <h3 className="font-bold text-lg">{selectedLine.line}</h3>
                   <span className="text-xs text-muted-foreground">{selectedLine.type}</span>
                 </div>
-                <div className="grid grid-cols-4 gap-4 mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   {[
                     { l: "Passeggeri", v: selectedLine.passengers.toLocaleString() },
                     { l: "Carico", v: `${selectedLine.load}%` },
@@ -523,7 +524,6 @@ export default function MobilitaPlusPage() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </MobileAppLayout>
   );
 }
