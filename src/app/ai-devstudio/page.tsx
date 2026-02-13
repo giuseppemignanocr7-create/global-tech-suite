@@ -80,67 +80,73 @@ function extractCodeBlocks(text: string): GeneratedFile[] {
 
 /** Build a self-contained HTML page from generated files for live preview */
 function buildPreviewHtml(files: GeneratedFile[]): string {
-  // Collect CSS
+  // 1. Look for any HTML file and render it directly
+  const htmlFile = files.find(
+    (f) => f.language === "html" || f.path.endsWith(".html") ||
+    f.content.trim().startsWith("<!") || f.content.trim().startsWith("<html")
+  );
+  if (htmlFile) return htmlFile.content;
+
+  // 2. Try to assemble TSX/CSS into a renderable page
   const cssFiles = files.filter((f) => f.language === "css" || f.path.endsWith(".css"));
   const cssBlock = cssFiles.map((f) => f.content).join("\n");
 
-  // Collect TSX/JSX/HTML
-  const mainFile =
-    files.find((f) => f.path.includes("App")) ||
-    files.find((f) => f.path.includes("Calculator")) ||
-    files.find((f) => f.path.includes("page")) ||
-    files.find((f) => f.language === "tsx" || f.language === "jsx" || f.language === "html") ||
-    files[0];
+  // Extract JSX-like markup from TSX files (strip imports, exports, TypeScript)
+  const tsxFiles = files.filter(
+    (f) => f.language === "tsx" || f.language === "jsx" || f.path.endsWith(".tsx") || f.path.endsWith(".jsx")
+  );
 
-  if (!mainFile) return "";
-
-  // If it's pure HTML, render directly
-  if (mainFile.language === "html" || mainFile.content.trim().startsWith("<!") || mainFile.content.trim().startsWith("<html")) {
-    return mainFile.content;
+  // Try to extract return() JSX from components
+  let jsxMarkup = "";
+  for (const f of tsxFiles) {
+    const returnMatch = f.content.match(/return\s*\(\s*([\s\S]*)\s*\)\s*;?\s*\}[\s\S]*$/);
+    if (returnMatch) {
+      let jsx = returnMatch[1].trim();
+      // Convert className to class for HTML rendering
+      jsx = jsx.replace(/className=/g, "class=");
+      // Remove {expressions} that aren't renderable
+      jsx = jsx.replace(/\{[^}]*\}/g, "");
+      jsxMarkup += jsx + "\n";
+    }
   }
 
-  // Otherwise build a code-display page showing all files nicely
+  if (jsxMarkup || cssBlock) {
+    return `<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GiuseCoder Preview</title>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  ${cssBlock}
+</style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-8">
+  ${jsxMarkup || '<div class="text-center text-slate-400"><p>Nessun markup renderizzabile trovato</p><p class="text-sm mt-2">I file generati sono nel tab IDE</p></div>'}
+</body>
+</html>`;
+  }
+
+  // 3. Fallback: display files as styled code blocks
   const allCode = files
     .map(
       (f) =>
-        `<div class="file-block">
-          <div class="file-header">${escapeHtml(f.path)} <span class="lang">${f.language}</span></div>
-          <pre><code>${escapeHtml(f.content)}</code></pre>
+        `<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;margin-bottom:16px;overflow:hidden">
+          <div style="padding:10px 16px;border-bottom:1px solid #334155;font-size:13px;color:#94a3b8;display:flex;justify-content:space-between;align-items:center">${escapeHtml(f.path)} <span style="font-size:10px;background:#334155;padding:2px 8px;border-radius:6px;color:#fbbf24">${f.language}</span></div>
+          <pre style="padding:16px;overflow-x:auto;font-size:12px;line-height:1.6"><code style="color:#e2e8f0">${escapeHtml(f.content)}</code></pre>
         </div>`
     )
     .join("\n");
 
   return `<!DOCTYPE html>
 <html lang="it">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GiuseCoder Preview</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0f172a; color: #e2e8f0; padding: 24px; }
-  h1 { font-size: 18px; color: #fbbf24; margin-bottom: 8px; font-weight: 700; }
-  .subtitle { font-size: 12px; color: #64748b; margin-bottom: 24px; }
-  .file-block { background: #1e293b; border: 1px solid #334155; border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
-  .file-header { padding: 10px 16px; background: #1e293b; border-bottom: 1px solid #334155; font-size: 13px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; }
-  .lang { font-size: 10px; background: #334155; padding: 2px 8px; border-radius: 6px; color: #fbbf24; }
-  pre { padding: 16px; overflow-x: auto; font-size: 12px; line-height: 1.6; }
-  code { color: #e2e8f0; }
-  .stats { display: flex; gap: 16px; margin-bottom: 20px; }
-  .stat { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 16px; flex: 1; text-align: center; }
-  .stat-value { font-size: 20px; font-weight: 700; color: #fbbf24; }
-  .stat-label { font-size: 10px; color: #64748b; margin-top: 2px; }
-  ${cssBlock}
-</style>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'SF Mono',monospace;background:#0f172a;color:#e2e8f0;padding:24px}</style>
 </head>
 <body>
-  <h1>\u26a1 GiuseCoder Output</h1>
-  <p class="subtitle">${files.length} file generati</p>
-  <div class="stats">
-    <div class="stat"><div class="stat-value">${files.length}</div><div class="stat-label">File</div></div>
-    <div class="stat"><div class="stat-value">${files.reduce((s, f) => s + f.content.split("\n").length, 0)}</div><div class="stat-label">Righe</div></div>
-    <div class="stat"><div class="stat-value">${Math.round(files.reduce((s, f) => s + f.content.length, 0) / 1024)}KB</div><div class="stat-label">Dimensione</div></div>
-  </div>
+  <h1 style="font-size:18px;color:#fbbf24;margin-bottom:16px">\u26a1 ${files.length} file generati</h1>
   ${allCode}
 </body>
 </html>`;
@@ -189,10 +195,25 @@ export default function AIDevStudioPage() {
     openai?: { ok: boolean; error?: string; model?: string };
   }>({});
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const userScrolledUp = useRef(false);
 
   useEffect(() => { setSettings(loadSettings()); }, []);
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  // Smart auto-scroll: only if user hasn't scrolled up
+  useEffect(() => {
+    if (!userScrolledUp.current) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  const handleChatScroll = useCallback(() => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    userScrolledUp.current = distFromBottom > 150;
+  }, []);
 
   const updateSettings = useCallback((patch: Partial<UserSettings>) => {
     setSettings((prev) => {
@@ -237,7 +258,7 @@ export default function AIDevStudioPage() {
 
   /* ── orchestrate ── */
   const handleSend = useCallback(async () => {
-    if (!input.trim() || isRunning) return;
+    if (!input.trim()) return;
     if (!settings.anthropicApiKey) {
       setMessages((prev) => [
         ...prev,
@@ -522,7 +543,7 @@ export default function AIDevStudioPage() {
         {page === "chat" && (
           <div className="flex-1 flex flex-col">
             {/* Chat messages */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto" ref={chatContainerRef} onScroll={handleChatScroll}>
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full px-4">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-4">
