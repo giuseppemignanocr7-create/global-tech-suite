@@ -1,200 +1,366 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
-  Code2, Download, Sparkles, Terminal, Eye, FileCode,
-  Settings, FolderTree, ChevronRight, ChevronDown, File, Folder,
-  GitBranch, Package, RefreshCw, Plus, X,
-  AlertCircle, CheckCircle2,
-  Cpu, Globe
+  Code2, Sparkles, Terminal, Eye, FileCode, Send,
+  Settings, Bot, ChevronRight, ChevronDown, File, Folder,
+  GitBranch, RefreshCw, Plus, X, Copy, Check,
+  AlertCircle, CheckCircle2, Loader2, Zap, Monitor, Tablet, Smartphone,
+  Cpu, Globe, Shield, Brain, Palette, KeyRound, ToggleLeft, ToggleRight,
+  MessageSquare, Users, ArrowLeft,
 } from "lucide-react";
 import DemoBadge from "@/components/DemoBadge";
-import { Menu } from "lucide-react";
+import type {
+  ChatMessage,
+  PipelineProgress,
+  PipelineStepProgress,
+  GeneratedFile,
+  UserSettings,
+  AgentId,
+  TaskType,
+} from "@/lib/ai-devstudio/types";
+import { DEFAULT_SETTINGS, estimateCost } from "@/lib/ai-devstudio/types";
+import { ROUTING_TABLE, AGENT_INFO } from "@/lib/ai-devstudio/routing";
 
-/* ───────── DATA ───────── */
-const fileTree = [
-  { name: "src", type: "folder", open: true, children: [
-    { name: "components", type: "folder", open: true, children: [
-      { name: "LoginForm.tsx", type: "file", lang: "tsx", lines: 68, active: true },
-      { name: "Button.tsx", type: "file", lang: "tsx", lines: 24 },
-      { name: "Input.tsx", type: "file", lang: "tsx", lines: 32 },
-    ]},
-    { name: "pages", type: "folder", open: false, children: [
-      { name: "index.tsx", type: "file", lang: "tsx", lines: 45 },
-      { name: "login.tsx", type: "file", lang: "tsx", lines: 38 },
-    ]},
-    { name: "styles", type: "folder", open: false, children: [
-      { name: "globals.css", type: "file", lang: "css", lines: 52 },
-    ]},
-    { name: "lib", type: "folder", open: false, children: [
-      { name: "utils.ts", type: "file", lang: "ts", lines: 18 },
-      { name: "api.ts", type: "file", lang: "ts", lines: 42 },
-    ]},
-  ]},
-  { name: "package.json", type: "file", lang: "json", lines: 28 },
-  { name: "tsconfig.json", type: "file", lang: "json", lines: 22 },
-  { name: "README.md", type: "file", lang: "md", lines: 45 },
-];
+/* ═══════════════════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════════════════ */
 
-const generatedCode = `import React, { useState } from 'react';
-
-interface LoginFormProps {
-  onSubmit: (email: string, password: string) => void;
-  loading?: boolean;
+function uid(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-export default function LoginForm({ onSubmit, loading }: LoginFormProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showPassword, setShowPassword] = useState(false);
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!email) {
-      newErrors.email = 'Email obbligatoria';
-    } else if (!email.includes('@')) {
-      newErrors.email = 'Email non valida';
-    }
-    if (!password) {
-      newErrors.password = 'Password obbligatoria';
-    } else if (password.length < 8) {
-      newErrors.password = 'Minimo 8 caratteri';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validate()) {
-      onSubmit(email, password);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-sm mx-auto">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold">Bentornato</h2>
-        <p className="text-gray-500 text-sm">Accedi al tuo account</p>
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2.5 text-sm
-                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="nome@esempio.com"
-        />
-        {errors.email && (
-          <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-        )}
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Password</label>
-        <div className="relative">
-          <input
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2.5 text-sm pr-10
-                       focus:ring-2 focus:ring-blue-500"
-            placeholder="••••••••"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-          >
-            {showPassword ? '🙈' : '👁'}
-          </button>
-        </div>
-        {errors.password && (
-          <p className="text-red-500 text-xs mt-1">{errors.password}</p>
-        )}
-      </div>
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-blue-600 text-white rounded-lg py-2.5
-                   font-medium hover:bg-blue-700 disabled:opacity-50"
-      >
-        {loading ? 'Accesso in corso...' : 'Accedi'}
-      </button>
-      <p className="text-center text-xs text-gray-500">
-        Non hai un account?{' '}
-        <a href="#" className="text-blue-600 hover:underline">Registrati</a>
-      </p>
-    </form>
-  );
-}`;
-
-const terminalLines = [
-  { type: "cmd", text: "$ npx create-next-app@latest login-form --typescript" },
-  { type: "out", text: "Creating a new Next.js app in /login-form..." },
-  { type: "out", text: "Installing dependencies: react, react-dom, next..." },
-  { type: "success", text: "✓ Dependencies installed successfully" },
-  { type: "cmd", text: "$ npm run dev" },
-  { type: "out", text: "ready - started server on 0.0.0.0:3000" },
-  { type: "success", text: "✓ Compiled successfully in 1.2s" },
-  { type: "out", text: "Local: http://localhost:3000" },
-];
-
-const projects = [
-  { name: "Login Form", lang: "React + TypeScript", date: "10/02/2026", files: 3, size: "12KB", status: "completato", desc: "Form di autenticazione con validazione" },
-  { name: "Dashboard Vendite", lang: "Next.js + Recharts", date: "08/02/2026", files: 7, size: "48KB", status: "completato", desc: "Dashboard interattiva con grafici real-time" },
-  { name: "API Utenti", lang: "Node.js + Express", date: "05/02/2026", files: 5, size: "22KB", status: "completato", desc: "API REST con CRUD e autenticazione JWT" },
-  { name: "Landing Page", lang: "HTML + TailwindCSS", date: "02/02/2026", files: 2, size: "8KB", status: "completato", desc: "Landing page responsive con animazioni" },
-  { name: "Chat App", lang: "React + Socket.io", date: "28/01/2026", files: 9, size: "56KB", status: "in_corso", desc: "Chat real-time con rooms e notifiche" },
-  { name: "E-commerce", lang: "Next.js + Stripe", date: "25/01/2026", files: 14, size: "92KB", status: "in_corso", desc: "Store completo con carrello e pagamenti" },
-];
-
-const examples = [
-  { prompt: "Crea un form di login con validazione email e password", icon: "🔐", category: "Form" },
-  { prompt: "Genera una tabella dati con paginazione e filtri", icon: "📊", category: "UI" },
-  { prompt: "Crea un\'API REST per gestire utenti con CRUD", icon: "🔌", category: "Backend" },
-  { prompt: "Genera un dashboard con grafici per vendite", icon: "📈", category: "Dashboard" },
-  { prompt: "Crea un componente chat con WebSocket", icon: "💬", category: "Real-time" },
-  { prompt: "Genera un sistema di autenticazione JWT", icon: "🛡️", category: "Auth" },
-];
-
-const langColors: Record<string, string> = {
-  tsx: "#3b82f6", ts: "#3b82f6", css: "#8b5cf6", json: "#f59e0b", md: "#22c55e",
+const AGENT_COLORS: Record<AgentId, string> = {
+  opus: "#8b5cf6",
+  sonnet: "#ec4899",
+  codex: "#06b6d4",
+  haiku: "#22c55e",
 };
 
-/* ───────── COMPONENT ───────── */
-type Page = "ide" | "preview" | "projects" | "terminal";
+const AGENT_EMOJI: Record<AgentId, string> = {
+  opus: "🧠",
+  sonnet: "🎨",
+  codex: "⚡",
+  haiku: "🐇",
+};
+
+function extractCodeBlocks(text: string): GeneratedFile[] {
+  const files: GeneratedFile[] = [];
+  const regex = /```(\w+)?\n\/\/\s*filepath:\s*(.+?)\n([\s\S]*?)```/g;
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    files.push({
+      language: m[1] || "typescript",
+      path: m[2].trim(),
+      content: m[3].trim(),
+    });
+  }
+  if (files.length === 0) {
+    const simpleRegex = /```(\w+)?\n([\s\S]*?)```/g;
+    let idx = 0;
+    while ((m = simpleRegex.exec(text)) !== null) {
+      files.push({
+        language: m[1] || "typescript",
+        path: `generated_${idx}.${m[1] === "tsx" ? "tsx" : m[1] === "css" ? "css" : "ts"}`,
+        content: m[2].trim(),
+      });
+      idx++;
+    }
+  }
+  return files;
+}
+
+function loadSettings(): UserSettings {
+  if (typeof window === "undefined") return DEFAULT_SETTINGS;
+  try {
+    const raw = localStorage.getItem("giusecoder_settings");
+    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  return DEFAULT_SETTINGS;
+}
+
+function saveSettings(s: UserSettings) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("giusecoder_settings", JSON.stringify(s));
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PAGE
+   ═══════════════════════════════════════════════════════════ */
+type Page = "chat" | "ide" | "preview" | "agents" | "settings";
 
 export default function AIDevStudioPage() {
-  const [page, setPage] = useState<Page>("ide");
-  const [prompt, setPrompt] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [showCode, setShowCode] = useState(true);
-  const [activeFile, setActiveFile] = useState("LoginForm.tsx");
-  const [openTabs, setOpenTabs] = useState(["LoginForm.tsx", "Button.tsx"]);
-  const [showTerminal, setShowTerminal] = useState(true);
+  /* ── state ── */
+  const [page, setPage] = useState<Page>("chat");
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isRunning, setIsRunning] = useState(false);
+  const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
+  const [activeFileIdx, setActiveFileIdx] = useState(0);
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [sessionStats, setSessionStats] = useState({ requests: 0, tokens: 0, cost: 0 });
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const handleGenerate = () => {
-    if (!prompt.trim()) return;
-    setIsGenerating(true);
-    setTimeout(() => {
-      setIsGenerating(false);
-      setShowCode(true);
-    }, 2000);
+  useEffect(() => { setSettings(loadSettings()); }, []);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  const updateSettings = useCallback((patch: Partial<UserSettings>) => {
+    setSettings((prev) => {
+      const next = { ...prev, ...patch };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
+
+  /* ── orchestrate ── */
+  const handleSend = useCallback(async () => {
+    if (!input.trim() || isRunning) return;
+    if (!settings.anthropicApiKey) {
+      setMessages((prev) => [
+        ...prev,
+        { id: uid(), role: "assistant", content: "⚠️ Configura la tua API key Anthropic nelle Impostazioni prima di iniziare.", timestamp: Date.now() },
+      ]);
+      return;
+    }
+
+    const userMsg: ChatMessage = { id: uid(), role: "user", content: input.trim(), timestamp: Date.now() };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setIsRunning(true);
+
+    const assistantId = uid();
+    const pipeline: PipelineProgress = { taskType: "complex_feature" as TaskType, steps: [] };
+
+    setMessages((prev) => [
+      ...prev,
+      { id: assistantId, role: "assistant", content: "", timestamp: Date.now(), pipeline, files: [] },
+    ]);
+
+    const abortController = new AbortController();
+    abortRef.current = abortController;
+
+    try {
+      const resp = await fetch("/api/ai-devstudio/orchestrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMsg.content,
+          context: generatedFiles.map((f) => `${f.path}:\n${f.content}`).join("\n\n").slice(0, 4000),
+          settings,
+          history: messages.slice(-10).map((m) => ({ role: m.role, content: m.content })),
+        }),
+        signal: abortController.signal,
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${errText}`);
+      }
+
+      const reader = resp.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+      const agentTexts: Record<string, string> = {};
+      let currentPipeline = { ...pipeline };
+      let allFiles: GeneratedFile[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        let eventType = "";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            eventType = line.slice(7).trim();
+          } else if (line.startsWith("data: ") && eventType) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              switch (eventType) {
+                case "triage_done":
+                  currentPipeline = { ...currentPipeline, taskType: data.taskType, triageLatencyMs: data.latencyMs };
+                  break;
+                case "pipeline":
+                  currentPipeline = {
+                    ...currentPipeline,
+                    taskType: data.taskType,
+                    steps: data.steps.map((s: { agent: AgentId; role: string; parallel?: string }) => ({
+                      agent: s.agent,
+                      role: s.role,
+                      parallel: s.parallel,
+                      status: "waiting" as const,
+                      content: "",
+                    })),
+                  };
+                  break;
+                case "step_start": {
+                  const steps = currentPipeline.steps.map((s) =>
+                    s.agent === data.agent && s.status === "waiting"
+                      ? { ...s, status: "running" as const }
+                      : s
+                  );
+                  currentPipeline = { ...currentPipeline, steps };
+                  break;
+                }
+                case "token": {
+                  const agent = data.agent as string;
+                  agentTexts[agent] = (agentTexts[agent] || "") + data.text;
+                  const steps = currentPipeline.steps.map((s) =>
+                    s.agent === agent && s.status === "running"
+                      ? { ...s, content: agentTexts[agent] }
+                      : s
+                  );
+                  currentPipeline = { ...currentPipeline, steps };
+                  break;
+                }
+                case "step_done": {
+                  const steps = currentPipeline.steps.map((s) =>
+                    s.agent === data.agent && s.status === "running"
+                      ? {
+                          ...s,
+                          status: "done" as const,
+                          latencyMs: data.latencyMs,
+                          inputTokens: data.inputTokens,
+                          outputTokens: data.outputTokens,
+                        }
+                      : s
+                  );
+                  currentPipeline = { ...currentPipeline, steps };
+                  break;
+                }
+                case "step_error": {
+                  const steps = currentPipeline.steps.map((s) =>
+                    s.agent === data.agent && s.status === "running"
+                      ? { ...s, status: "error" as const, content: `Error: ${data.error}` }
+                      : s
+                  );
+                  currentPipeline = { ...currentPipeline, steps };
+                  break;
+                }
+                case "review":
+                  currentPipeline = { ...currentPipeline, reviewResult: data };
+                  break;
+                case "done": {
+                  currentPipeline = {
+                    ...currentPipeline,
+                    totalLatencyMs: data.totalLatencyMs,
+                    totalTokens: data.totalTokens,
+                  };
+                  // Extract cost
+                  const totalCostEst =
+                    currentPipeline.steps.reduce((sum, s) => {
+                      if (s.inputTokens && s.outputTokens) {
+                        const model =
+                          s.agent === "codex"
+                            ? settings.models.codex
+                            : s.agent === "opus"
+                            ? settings.models.opus
+                            : s.agent === "sonnet"
+                            ? settings.models.sonnet
+                            : settings.models.haiku;
+                        return sum + estimateCost(model, s.inputTokens, s.outputTokens);
+                      }
+                      return sum;
+                    }, 0);
+                  currentPipeline = { ...currentPipeline, totalCost: totalCostEst };
+                  setSessionStats((prev) => ({
+                    requests: prev.requests + 1,
+                    tokens: prev.tokens + (data.totalTokens || 0),
+                    cost: prev.cost + totalCostEst,
+                  }));
+                  // Extract generated files from all agent outputs
+                  const allText = Object.values(agentTexts).join("\n\n");
+                  allFiles = extractCodeBlocks(allText);
+                  if (allFiles.length > 0) {
+                    setGeneratedFiles((prev) => [...prev, ...allFiles]);
+                    setActiveFileIdx(0);
+                  }
+                  break;
+                }
+                case "error":
+                  currentPipeline = {
+                    ...currentPipeline,
+                    steps: [
+                      ...currentPipeline.steps,
+                      { agent: "opus", role: "plan", status: "error", content: data.message } as PipelineStepProgress,
+                    ],
+                  };
+                  break;
+              }
+
+              // Update the assistant message
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? {
+                        ...m,
+                        pipeline: { ...currentPipeline },
+                        files: allFiles,
+                        content: Object.values(agentTexts).join("\n\n---\n\n"),
+                      }
+                    : m
+                )
+              );
+            } catch {}
+            eventType = "";
+          } else if (line === "") {
+            eventType = "";
+          }
+        }
+      }
+    } catch (e: unknown) {
+      if ((e as Error).name !== "AbortError") {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: `❌ Errore: ${(e as Error).message}` }
+              : m
+          )
+        );
+      }
+    } finally {
+      setIsRunning(false);
+      abortRef.current = null;
+    }
+  }, [input, isRunning, settings, messages, generatedFiles]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
-  const codeLines = generatedCode.split("\n");
+  const copyToClipboard = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIdx(idx);
+    setTimeout(() => setCopiedIdx(null), 2000);
+  };
 
-  const mobileNav = [
-    { key: "ide" as Page, icon: FileCode, label: "Editor" },
+  /* ── nav items ── */
+  const navItems = [
+    { key: "chat" as Page, icon: MessageSquare, label: "Chat" },
+    { key: "ide" as Page, icon: FileCode, label: "Codice" },
     { key: "preview" as Page, icon: Eye, label: "Preview" },
-    { key: "projects" as Page, icon: FolderTree, label: "Progetti" },
-    { key: "terminal" as Page, icon: Terminal, label: "Terminal" },
+    { key: "agents" as Page, icon: Bot, label: "Agenti" },
+    { key: "settings" as Page, icon: Settings, label: "Config" },
   ];
 
+  const hasKeys = !!settings.anthropicApiKey;
+
+  /* ═══════════════════════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════════════════════ */
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row">
       <DemoBadge />
@@ -204,227 +370,256 @@ export default function AIDevStudioPage() {
         <Link href="/" className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
           <Code2 className="w-3.5 h-3.5 text-white" />
         </Link>
-        <span className="text-sm font-bold text-amber-400">AI DevStudio</span>
-        <span className="text-xs text-muted-foreground">{mobileNav.find(n => n.key === page)?.label}</span>
+        <span className="text-sm font-bold text-amber-400">GiuseCoder</span>
+        <span className="text-xs text-muted-foreground">{navItems.find((n) => n.key === page)?.label}</span>
       </header>
 
-      {/* ─── ACTIVITY BAR (VS Code style narrow bar) ─── */}
+      {/* ── Desktop activity bar ── */}
       <div className="hidden lg:flex w-12 bg-card border-r border-border flex-col items-center py-2 gap-1 shrink-0">
-        <Link href="/" className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-2">
+        <Link href="/" className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-2" title="Portale">
           <Code2 className="w-4 h-4 text-white" />
         </Link>
-        {[
-          { key: "ide" as Page, icon: FileCode, tip: "Editor" },
-          { key: "preview" as Page, icon: Eye, tip: "Preview" },
-          { key: "projects" as Page, icon: FolderTree, tip: "Progetti" },
-          { key: "terminal" as Page, icon: Terminal, tip: "Terminal" },
-        ].map(({ key, icon: Icon, tip }) => (
+        {navItems.map(({ key, icon: Icon, label }) => (
           <button
             key={key}
             onClick={() => setPage(key)}
             className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
               page === key ? "bg-amber-500/10 text-amber-400" : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
-            title={tip}
+            title={label}
           >
             <Icon className="w-5 h-5" />
           </button>
         ))}
         <div className="flex-1" />
-        <button className="w-10 h-10 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted" title="Impostazioni">
-          <Settings className="w-5 h-5" />
-        </button>
+        {sessionStats.requests > 0 && (
+          <div className="text-center mb-2">
+            <p className="text-[9px] text-amber-400 font-mono">${sessionStats.cost.toFixed(3)}</p>
+            <p className="text-[8px] text-muted-foreground">{sessionStats.requests} req</p>
+          </div>
+        )}
       </div>
 
-      {/* ─── FILE EXPLORER ─── */}
-      {page === "ide" && (
-        <aside className="hidden lg:flex w-56 border-r border-border bg-card/50 flex-col shrink-0">
-          <div className="p-2 border-b border-border flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1">Explorer</span>
-            <div className="flex gap-0.5">
-              <button className="p-1 rounded hover:bg-muted text-muted-foreground"><Plus className="w-3 h-3" /></button>
-              <button className="p-1 rounded hover:bg-muted text-muted-foreground"><RefreshCw className="w-3 h-3" /></button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto py-1 text-xs">
-            {fileTree.map((item, i) => (
-              <div key={i}>
-                {item.type === "folder" ? (
-                  <>
-                    <button className="w-full flex items-center gap-1 px-2 py-1 hover:bg-muted/50 text-muted-foreground">
-                      {item.open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                      <Folder className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{item.name}</span>
-                    </button>
-                    {item.open && item.children?.map((child, ci) => (
-                      <div key={ci}>
-                        {child.type === "folder" ? (
-                          <>
-                            <button className="w-full flex items-center gap-1 px-2 py-1 pl-5 hover:bg-muted/50 text-muted-foreground">
-                              {child.open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                              <Folder className="w-3.5 h-3.5 text-amber-400/70" />
-                              <span>{child.name}</span>
-                            </button>
-                            {child.open && child.children?.map((f: any, fi: number) => (
-                              <button key={fi}
-                                onClick={() => { setActiveFile(f.name); if (!openTabs.includes(f.name)) setOpenTabs([...openTabs, f.name]); }}
-                                className={`w-full flex items-center gap-1 px-2 py-1 pl-9 hover:bg-muted/50 ${activeFile === f.name ? "bg-amber-500/10 text-amber-400" : "text-muted-foreground"}`}
-                              >
-                                <File className="w-3 h-3" style={{ color: langColors[f.lang] || "#6b7280" }} />
-                                <span>{f.name}</span>
-                              </button>
-                            ))}
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => { setActiveFile(child.name); if (!openTabs.includes(child.name)) setOpenTabs([...openTabs, child.name]); }}
-                            className={`w-full flex items-center gap-1 px-2 py-1 pl-5 hover:bg-muted/50 ${activeFile === child.name ? "bg-amber-500/10 text-amber-400" : "text-muted-foreground"}`}
-                          >
-                            <File className="w-3 h-3" style={{ color: langColors[(child as any).lang] || "#6b7280" }} />
-                            <span>{child.name}</span>
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <button
-                    onClick={() => { setActiveFile(item.name); if (!openTabs.includes(item.name)) setOpenTabs([...openTabs, item.name]); }}
-                    className={`w-full flex items-center gap-1 px-2 py-1 hover:bg-muted/50 ${activeFile === item.name ? "bg-amber-500/10 text-amber-400" : "text-muted-foreground"}`}
-                  >
-                    <File className="w-3 h-3" style={{ color: langColors[(item as any).lang] || "#6b7280" }} />
-                    <span>{item.name}</span>
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* AI Prompt panel */}
-          <div className="border-t border-border p-2">
-            <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-2">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Sparkles className="w-3 h-3 text-amber-400" />
-                <span className="text-[10px] text-amber-400 font-medium">AI Assistant</span>
-              </div>
-              <textarea
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                rows={2}
-                placeholder="Descrivi cosa generare..."
-                className="w-full px-2 py-1.5 bg-background border border-border rounded text-[11px] resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/40"
-              />
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className="w-full mt-1.5 py-1.5 bg-amber-500 text-black rounded text-[10px] font-semibold hover:bg-amber-400 disabled:opacity-50 flex items-center justify-center gap-1"
-              >
-                {isGenerating ? <><RefreshCw className="w-2.5 h-2.5 animate-spin" />Generando...</> : <><Sparkles className="w-2.5 h-2.5" />Genera</>}
-              </button>
-            </div>
-          </div>
-        </aside>
-      )}
-
-      {/* ─── MAIN CONTENT ─── */}
+      {/* ═══════════════════════════════════════════════
+           MAIN CONTENT
+         ═══════════════════════════════════════════════ */}
       <main className="flex-1 min-w-0 pb-16 lg:pb-0 flex flex-col overflow-hidden">
 
-        {/* ═══ IDE ═══ */}
-        {page === "ide" && (
+        {/* ═══ CHAT ═══ */}
+        {page === "chat" && (
           <div className="flex-1 flex flex-col">
-            {/* Tabs */}
-            <div className="flex items-center border-b border-border bg-card/50 px-1">
-              {openTabs.map(tab => (
-                <div key={tab} onClick={() => setActiveFile(tab)}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-xs cursor-pointer border-b-2 transition-colors ${
-                    activeFile === tab ? "border-amber-500 text-amber-400 bg-background" : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <File className="w-3 h-3" />
-                  <span>{tab}</span>
-                  <button onClick={e => { e.stopPropagation(); setOpenTabs(openTabs.filter(t => t !== tab)); if (activeFile === tab) setActiveFile(openTabs[0] || ""); }}
-                    className="ml-1 p-0.5 rounded hover:bg-muted">
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                </div>
-              ))}
-              <div className="flex-1" />
-              <div className="flex items-center gap-1 px-2 text-[10px] text-muted-foreground">
-                <GitBranch className="w-3 h-3" />main
-                <span className="ml-2">TypeScript</span>
-                <span className="ml-2">UTF-8</span>
-              </div>
-            </div>
-
-            {/* Editor area */}
-            <div className="flex-1 overflow-auto bg-background">
-              {showCode ? (
-                <div className="font-mono text-xs leading-6">
-                  {codeLines.map((line, i) => (
-                    <div key={i} className="flex hover:bg-muted/30 group">
-                      <span className="w-12 text-right pr-4 text-muted-foreground/50 select-none shrink-0 border-r border-border/50">{i + 1}</span>
-                      <pre className="pl-4 flex-1 whitespace-pre-wrap">
-                        <code className={`${line.includes("import") ? "text-purple-400" : line.includes("//") ? "text-muted-foreground" : line.includes("const ") || line.includes("function ") ? "text-blue-400" : line.includes("return") ? "text-pink-400" : line.includes("'") || line.includes('"') || line.includes('`') ? "text-green-400" : "text-foreground/80"}`}>{line || " "}</code>
-                      </pre>
-                    </div>
-                  ))}
+            {/* Chat messages */}
+            <div className="flex-1 overflow-y-auto">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full px-4">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-4">
+                    <Code2 className="w-8 h-8 text-white" />
+                  </div>
+                  <h2 className="text-xl font-bold mb-1">GiuseCoder</h2>
+                  <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
+                    Orchestrazione automatica a 3 agenti AI. Scrivi cosa vuoi costruire — il sistema decide chi fa cosa.
+                  </p>
+                  {!hasKeys && (
+                    <button onClick={() => setPage("settings")} className="px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-xl text-sm font-medium hover:bg-amber-500/20 mb-6 flex items-center gap-2">
+                      <KeyRound className="w-4 h-4" />Configura API Keys
+                    </button>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg w-full">
+                    {[
+                      "Crea una landing page con hero, pricing e form di contatto",
+                      "Genera un componente React per una tabella dati con filtri e paginazione",
+                      "Scrivi un\'API REST per gestire utenti con autenticazione JWT",
+                      "Crea un design system con bottoni, input e card components",
+                    ].map((ex, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setInput(ex)}
+                        className="text-left p-3 rounded-xl bg-card border border-border hover:border-amber-500/30 transition-colors text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        {ex}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <div className="text-center">
-                    <Sparkles className="w-12 h-12 mx-auto mb-3 text-amber-400/30" />
-                    <p className="text-sm">Usa l&apos;AI Assistant per generare codice</p>
-                    <p className="text-xs text-muted-foreground mt-1">Oppure seleziona un file dall&apos;explorer</p>
-                  </div>
+                <div className="p-4 space-y-4 max-w-4xl mx-auto w-full">
+                  {messages.map((msg) => (
+                    <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
+                      {msg.role === "assistant" && (
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <Code2 className="w-3.5 h-3.5 text-white" />
+                        </div>
+                      )}
+                      <div className={`max-w-[85%] min-w-0 ${msg.role === "user" ? "bg-amber-500/10 border border-amber-500/20 rounded-2xl rounded-tr-md px-4 py-2.5" : "flex-1"}`}>
+                        {msg.role === "user" ? (
+                          <p className="text-sm">{msg.content}</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {/* Pipeline visualization */}
+                            {msg.pipeline && <PipelineViz pipeline={msg.pipeline} settings={settings} />}
+                            {/* Generated files */}
+                            {msg.files && msg.files.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                <p className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  {msg.files.length} file generati
+                                </p>
+                                {msg.files.map((f, fi) => (
+                                  <div key={fi} className="bg-card border border-border rounded-xl overflow-hidden">
+                                    <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-card/80">
+                                      <span className="text-[11px] font-mono text-muted-foreground">{f.path}</span>
+                                      <button
+                                        onClick={() => copyToClipboard(f.content, fi)}
+                                        className="p-1 rounded hover:bg-muted text-muted-foreground"
+                                      >
+                                        {copiedIdx === fi ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                                      </button>
+                                    </div>
+                                    <pre className="p-3 text-[11px] font-mono overflow-x-auto max-h-48 text-foreground/80">{f.content}</pre>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {/* Plain text fallback if no pipeline */}
+                            {!msg.pipeline && msg.content && (
+                              <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={chatEndRef} />
                 </div>
               )}
             </div>
 
-            {/* Terminal panel */}
-            {showTerminal && (
-              <div className="h-44 border-t border-border bg-card/80 flex flex-col shrink-0">
-                <div className="flex items-center justify-between px-3 py-1.5 border-b border-border">
-                  <div className="flex items-center gap-3 text-[10px]">
-                    <span className="text-amber-400 font-medium">TERMINALE</span>
-                    <span className="text-muted-foreground">PROBLEMI 0</span>
-                    <span className="text-muted-foreground">OUTPUT</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button className="p-0.5 rounded hover:bg-muted text-muted-foreground"><Plus className="w-3 h-3" /></button>
-                    <button onClick={() => setShowTerminal(false)} className="p-0.5 rounded hover:bg-muted text-muted-foreground"><X className="w-3 h-3" /></button>
-                  </div>
+            {/* Input bar */}
+            <div className="border-t border-border bg-card/50 p-3">
+              <div className="max-w-4xl mx-auto flex items-end gap-2">
+                <div className="flex-1 relative">
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    rows={1}
+                    placeholder={hasKeys ? "Descrivi cosa vuoi costruire..." : "Configura le API key nelle impostazioni..."}
+                    disabled={!hasKeys}
+                    className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500/40 disabled:opacity-50 pr-12"
+                    style={{ minHeight: 48, maxHeight: 120 }}
+                  />
+                  {isRunning && (
+                    <button
+                      onClick={() => abortRef.current?.abort()}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                      title="Interrompi"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
-                <div className="flex-1 overflow-y-auto p-2 font-mono text-[11px] space-y-0.5">
-                  {terminalLines.map((l, i) => (
-                    <div key={i} className={l.type === "cmd" ? "text-amber-400" : l.type === "success" ? "text-green-400" : "text-muted-foreground"}>
-                      {l.text}
-                    </div>
-                  ))}
-                  <div className="text-amber-400 flex items-center">$ <span className="ml-1 w-2 h-4 bg-amber-400 animate-pulse" /></div>
-                </div>
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isRunning || !hasKeys}
+                  className="p-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black rounded-xl hover:from-amber-400 hover:to-orange-400 disabled:opacity-30 transition-all shrink-0"
+                >
+                  {isRunning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                </button>
               </div>
-            )}
-
-            {/* Status bar */}
-            <div className="flex items-center justify-between px-3 py-1 bg-amber-600 text-[10px] text-white/90">
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1"><GitBranch className="w-3 h-3" />main</span>
-                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />0 errori</span>
-                <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3" />0 warning</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span>Riga {codeLines.length}, Col 1</span>
-                <span>TypeScript React</span>
-                <span>UTF-8</span>
-                <span className="flex items-center gap-1"><Cpu className="w-3 h-3" />AI DevStudio v2.0</span>
+              <div className="max-w-4xl mx-auto flex items-center gap-3 mt-1.5 px-1">
+                <span className="text-[10px] text-muted-foreground">
+                  {isRunning ? "Pipeline in esecuzione..." : "Enter per inviare • Shift+Enter nuova riga"}
+                </span>
+                <div className="flex-1" />
+                {sessionStats.requests > 0 && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Sessione: {sessionStats.requests} req · {sessionStats.tokens.toLocaleString()} tok · ${sessionStats.cost.toFixed(3)}
+                  </span>
+                )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ═══ IDE ═══ */}
+        {page === "ide" && (
+          <div className="flex-1 flex flex-col">
+            {generatedFiles.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <FileCode className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Nessun file generato</p>
+                  <p className="text-xs mt-1">Usa la Chat per generare codice con i 3 agenti AI</p>
+                  <button onClick={() => setPage("chat")} className="mt-3 px-4 py-2 bg-amber-500/10 text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-500/20">
+                    Vai alla Chat
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Tabs */}
+                <div className="flex items-center border-b border-border bg-card/50 px-1 overflow-x-auto">
+                  {generatedFiles.map((f, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveFileIdx(i)}
+                      className={`flex items-center gap-1.5 px-3 py-2 text-xs whitespace-nowrap border-b-2 transition-colors shrink-0 ${
+                        activeFileIdx === i ? "border-amber-500 text-amber-400 bg-background" : "border-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <File className="w-3 h-3" />
+                      {f.path.split("/").pop()}
+                    </button>
+                  ))}
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => copyToClipboard(generatedFiles[activeFileIdx]?.content || "", -1)}
+                    className="px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    {copiedIdx === -1 ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />} Copia
+                  </button>
+                </div>
+                {/* Code */}
+                <div className="flex-1 overflow-auto bg-background">
+                  <div className="font-mono text-xs leading-6">
+                    {(generatedFiles[activeFileIdx]?.content || "").split("\n").map((line, i) => (
+                      <div key={i} className="flex hover:bg-muted/30">
+                        <span className="w-12 text-right pr-4 text-muted-foreground/50 select-none shrink-0 border-r border-border/50">{i + 1}</span>
+                        <pre className="pl-4 flex-1 whitespace-pre-wrap">
+                          <code className={
+                            line.trimStart().startsWith("import") ? "text-purple-400" :
+                            line.trimStart().startsWith("//") ? "text-muted-foreground" :
+                            line.includes("const ") || line.includes("function ") || line.includes("export ") ? "text-blue-400" :
+                            line.includes("return") ? "text-pink-400" :
+                            (line.includes("'") || line.includes('"') || line.includes('`')) ? "text-green-400" :
+                            "text-foreground/80"
+                          }>{line || " "}</code>
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Status bar */}
+                <div className="flex items-center justify-between px-3 py-1 bg-amber-600 text-[10px] text-white/90">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1"><GitBranch className="w-3 h-3" />main</span>
+                    <span>{generatedFiles.length} file</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span>{generatedFiles[activeFileIdx]?.path}</span>
+                    <span>{generatedFiles[activeFileIdx]?.language}</span>
+                    <span className="flex items-center gap-1"><Cpu className="w-3 h-3" />GiuseCoder v1.0</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {/* ═══ PREVIEW ═══ */}
         {page === "preview" && (
           <div className="flex-1 flex flex-col">
+            {/* Toolbar */}
             <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-card/50">
               <div className="flex gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-red-500" />
@@ -433,146 +628,253 @@ export default function AIDevStudioPage() {
               </div>
               <div className="flex-1 flex items-center gap-2 bg-muted rounded-lg px-3 py-1">
                 <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">localhost:3000/login</span>
+                <span className="text-xs text-muted-foreground">localhost:3000</span>
+              </div>
+              <div className="flex items-center bg-muted rounded-lg p-0.5">
+                {([
+                  { id: "desktop" as const, icon: Monitor, label: "Desktop" },
+                  { id: "tablet" as const, icon: Tablet, label: "Tablet" },
+                  { id: "mobile" as const, icon: Smartphone, label: "Mobile" },
+                ] as const).map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => setPreviewDevice(d.id)}
+                    className={`p-1.5 rounded-md transition-colors ${
+                      previewDevice === d.id ? "bg-background text-amber-400 shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    title={d.label}
+                  >
+                    <d.icon className="w-4 h-4" />
+                  </button>
+                ))}
               </div>
               <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><RefreshCw className="w-4 h-4" /></button>
             </div>
-            <div className="flex-1 bg-white overflow-auto">
-              <div className="max-w-sm mx-auto mt-16 p-6">
-                <div className="text-center mb-6">
-                  <div className="w-12 h-12 bg-blue-600 rounded-xl mx-auto mb-3 flex items-center justify-center"><Code2 className="w-6 h-6 text-white" /></div>
-                  <h2 className="text-xl font-bold text-gray-900">Bentornato</h2>
-                  <p className="text-gray-500 text-sm mt-1">Accedi al tuo account</p>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <div className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-400 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">nome@esempio.com</div>
+            {/* Preview area */}
+            <div className="flex-1 bg-[#1a1a2e] overflow-auto flex items-start justify-center p-4">
+              <div
+                className="bg-white rounded-lg shadow-2xl overflow-hidden transition-all duration-300"
+                style={{
+                  width: previewDevice === "desktop" ? "100%" : previewDevice === "tablet" ? 768 : 375,
+                  maxWidth: "100%",
+                  minHeight: previewDevice === "mobile" ? 667 : previewDevice === "tablet" ? 500 : 400,
+                }}
+              >
+                {generatedFiles.length > 0 ? (
+                  <div className="p-6">
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <p className="text-gray-500 text-xs mb-2">Preview dei file generati:</p>
+                      {generatedFiles.map((f, i) => (
+                        <div key={i} className="flex items-center gap-2 py-1">
+                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          <span className="text-sm text-gray-700 font-mono">{f.path}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <pre className="text-xs font-mono text-gray-800 bg-gray-50 rounded-lg p-4 overflow-auto max-h-[60vh]">
+                      {generatedFiles[0]?.content || "Nessun contenuto"}
+                    </pre>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <div className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-400 flex items-center justify-between">
-                      <span>••••••••</span>
-                      <span className="text-gray-400 cursor-pointer">👁</span>
+                ) : (
+                  <div className="flex items-center justify-center h-full min-h-[300px] text-gray-400">
+                    <div className="text-center">
+                      <Eye className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Genera codice dalla Chat per vedere l&apos;anteprima</p>
                     </div>
                   </div>
-                  <div className="bg-blue-600 text-white text-center rounded-lg py-2.5 text-sm font-medium cursor-pointer hover:bg-blue-700 transition-colors">Accedi</div>
-                  <p className="text-center text-xs text-gray-500">Non hai un account? <span className="text-blue-600 cursor-pointer hover:underline">Registrati</span></p>
-                </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3 px-4 py-1.5 border-t border-border bg-card/50 text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-400" />Compilato con successo</span>
+              <span className="flex items-center gap-1">
+                {previewDevice === "desktop" ? <Monitor className="w-3 h-3" /> : previewDevice === "tablet" ? <Tablet className="w-3 h-3" /> : <Smartphone className="w-3 h-3" />}
+                {previewDevice === "desktop" ? "Desktop (100%)" : previewDevice === "tablet" ? "Tablet (768px)" : "Mobile (375px)"}
+              </span>
               <span>•</span>
-              <span>Rendering: 12ms</span>
-              <span>•</span>
-              <span>Bundle: 48KB</span>
+              <span>{generatedFiles.length} file generati</span>
             </div>
           </div>
         )}
 
-        {/* ═══ PROJECTS ═══ */}
-        {page === "projects" && (
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-lg font-bold">I Miei Progetti</h2>
-                <p className="text-xs text-muted-foreground">{projects.length} progetti generati con AI</p>
-              </div>
-              <button onClick={() => setPage("ide")} className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-black rounded-lg text-xs font-semibold flex items-center gap-1.5">
-                <Plus className="w-3.5 h-3.5" />Nuovo Progetto
-              </button>
-            </div>
+        {/* ═══ AGENTS ═══ */}
+        {page === "agents" && (
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-lg font-bold mb-1">Agenti AI</h2>
+              <p className="text-xs text-muted-foreground mb-6">Orchestrazione automatica — l&apos;utente scrive, il sistema decide chi fa cosa</p>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-              {/* Stats */}
-              {[
-                { label: "Progetti", value: projects.length, icon: Package, color: "#f59e0b" },
-                { label: "File Generati", value: projects.reduce((s, p) => s + p.files, 0), icon: FileCode, color: "#3b82f6" },
-                { label: "Completati", value: projects.filter(p => p.status === "completato").length, icon: CheckCircle2, color: "#22c55e" },
-                { label: "In Corso", value: projects.filter(p => p.status === "in_corso").length, icon: RefreshCw, color: "#8b5cf6" },
-              ].map((s, i) => (
-                <div key={i} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: s.color + "15" }}>
-                    <s.icon className="w-5 h-5" style={{ color: s.color }} />
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold">{s.value}</p>
-                    <p className="text-xs text-muted-foreground">{s.label}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-3">
-              {projects.map((p, i) => (
-                <div key={i} className="bg-card border border-border rounded-xl p-5 hover:border-amber-500/30 transition-colors cursor-pointer" onClick={() => setPage("ide")}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                        <FileCode className="w-6 h-6 text-amber-400" />
+              {/* Agent cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                {(Object.entries(AGENT_INFO) as [AgentId, typeof AGENT_INFO[AgentId]][]).map(([id, info]) => (
+                  <div key={id} className="bg-card border border-border rounded-2xl p-5 hover:border-opacity-50 transition-colors" style={{ borderColor: info.color + "30" }}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${info.gradient} flex items-center justify-center text-lg`}>
+                        {info.emoji}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <h3 className="font-semibold text-sm">{p.name}</h3>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${p.status === "completato" ? "bg-green-500/10 text-green-400" : "bg-purple-500/10 text-purple-400"}`}>
-                            {p.status === "completato" ? "Completato" : "In corso"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mb-1">{p.desc}</p>
-                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                          <span>{p.lang}</span>
-                          <span>{p.files} file</span>
-                          <span>{p.size}</span>
-                          <span>{p.date}</span>
-                        </div>
+                        <h3 className="font-bold text-sm">{info.name}</h3>
+                        <p className="text-[11px] text-muted-foreground">{info.role}</p>
                       </div>
                     </div>
-                    <div className="flex gap-1.5">
-                      <button className="px-3 py-1.5 bg-amber-500/10 text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-500/20">Apri</button>
-                      <button className="px-3 py-1.5 bg-card border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground"><Download className="w-3 h-3" /></button>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {info.specialties.map((s) => (
+                        <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{s}</span>
+                      ))}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Modello: <span className="font-mono text-foreground/70">{settings.models[id]}</span>
                     </div>
                   </div>
+                ))}
+              </div>
+
+              {/* Session stats */}
+              <div className="bg-card border border-border rounded-2xl p-5 mb-6">
+                <h3 className="font-semibold text-sm mb-3">Statistiche Sessione</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { label: "Richieste", value: sessionStats.requests, color: "#f59e0b" },
+                    { label: "Token Totali", value: sessionStats.tokens.toLocaleString(), color: "#06b6d4" },
+                    { label: "Costo Totale", value: `$${sessionStats.cost.toFixed(4)}`, color: "#22c55e" },
+                  ].map((s) => (
+                    <div key={s.label} className="text-center">
+                      <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
+                      <p className="text-[10px] text-muted-foreground">{s.label}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              {/* Routing table */}
+              <div className="bg-card border border-border rounded-2xl p-5">
+                <h3 className="font-semibold text-sm mb-3">Routing Table — Come i Task Vengono Assegnati</h3>
+                <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
+                  {(Object.entries(ROUTING_TABLE) as [TaskType, typeof ROUTING_TABLE[TaskType]][]).map(([type, pipeline]) => (
+                    <div key={type} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-muted/50 text-xs">
+                      <span className="font-mono text-amber-400 w-32 shrink-0">{type}</span>
+                      <div className="flex items-center gap-1 flex-1">
+                        {pipeline.steps.map((s, i) => (
+                          <span key={i} className="flex items-center gap-0.5">
+                            {i > 0 && !s.parallel && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
+                            {i > 0 && s.parallel && <span className="text-[9px] text-muted-foreground mx-0.5">+</span>}
+                            <span
+                              className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                              style={{ backgroundColor: AGENT_COLORS[s.agent] + "15", color: AGENT_COLORS[s.agent] }}
+                            >
+                              {AGENT_EMOJI[s.agent]} {s.agent}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{pipeline.estimatedCost}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* ═══ TERMINAL FULL ═══ */}
-        {page === "terminal" && (
-          <div className="flex-1 flex flex-col">
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-card/50">
-              <Terminal className="w-4 h-4 text-amber-400" />
-              <span className="text-sm font-medium">Terminale</span>
-              <div className="flex-1" />
-              <button className="text-[10px] px-2 py-1 bg-muted rounded text-muted-foreground">bash</button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 font-mono text-sm bg-background">
-              {terminalLines.map((l, i) => (
-                <div key={i} className={`mb-1 ${l.type === "cmd" ? "text-amber-400" : l.type === "success" ? "text-green-400" : "text-muted-foreground"}`}>
-                  {l.text}
+        {/* ═══ SETTINGS ═══ */}
+        {page === "settings" && (
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="max-w-2xl mx-auto">
+              <h2 className="text-lg font-bold mb-1">Impostazioni</h2>
+              <p className="text-xs text-muted-foreground mb-6">Configura le API key e i modelli per GiuseCoder</p>
+
+              {/* API Keys */}
+              <div className="bg-card border border-border rounded-2xl p-5 mb-4">
+                <h3 className="font-semibold text-sm mb-3 flex items-center gap-2"><KeyRound className="w-4 h-4 text-amber-400" />API Keys</h3>
+                <p className="text-[11px] text-muted-foreground mb-4">Le chiavi sono salvate solo nel tuo browser (localStorage). Mai inviate a terzi.</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Anthropic API Key (per Opus, Sonnet, Haiku)</label>
+                    <input
+                      type="password"
+                      value={settings.anthropicApiKey}
+                      onChange={(e) => updateSettings({ anthropicApiKey: e.target.value })}
+                      placeholder="sk-ant-..."
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">OpenAI API Key (per Codex/GPT)</label>
+                    <input
+                      type="password"
+                      value={settings.openaiApiKey}
+                      onChange={(e) => updateSettings({ openaiApiKey: e.target.value })}
+                      placeholder="sk-..."
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    />
+                  </div>
                 </div>
-              ))}
-              <div className="mt-4 text-muted-foreground">
-                <p>$ ai-devstudio generate --prompt &quot;Login form&quot;</p>
-                <p className="text-amber-400">Analyzing prompt...</p>
-                <p className="text-amber-400">Selecting framework: React + TypeScript</p>
-                <p className="text-amber-400">Generating components...</p>
-                <p className="text-green-400">✓ LoginForm.tsx created (68 lines)</p>
-                <p className="text-green-400">✓ Button.tsx created (24 lines)</p>
-                <p className="text-green-400">✓ Input.tsx created (32 lines)</p>
-                <p className="text-green-400">✓ 3 files generated successfully</p>
-                <p className="mt-2">$ npm run build</p>
-                <p className="text-muted-foreground">Creating optimized production build...</p>
-                <p className="text-green-400">✓ Build completed in 2.4s</p>
-                <p className="text-green-400">✓ Bundle size: 48KB (gzipped: 16KB)</p>
               </div>
-              <div className="mt-2 text-amber-400 flex items-center">$ <span className="ml-1 w-2 h-5 bg-amber-400 animate-pulse" /></div>
-            </div>
-            <div className="flex items-center justify-between px-3 py-1 bg-amber-600 text-[10px] text-white/90">
-              <span className="flex items-center gap-1"><Terminal className="w-3 h-3" />bash — login-form</span>
-              <span>AI DevStudio v2.0</span>
+
+              {/* Models */}
+              <div className="bg-card border border-border rounded-2xl p-5 mb-4">
+                <h3 className="font-semibold text-sm mb-3 flex items-center gap-2"><Cpu className="w-4 h-4 text-cyan-400" />Modelli</h3>
+                <div className="space-y-3">
+                  {([
+                    { key: "opus" as const, label: "🧠 Opus (CTO)", placeholder: "claude-sonnet-4-20250514" },
+                    { key: "sonnet" as const, label: "🎨 Sonnet (Design)", placeholder: "claude-sonnet-4-20250514" },
+                    { key: "haiku" as const, label: "🐇 Haiku (Triage)", placeholder: "claude-3-5-haiku-20241022" },
+                    { key: "codex" as const, label: "⚡ Codex (Dev)", placeholder: "gpt-4o" },
+                  ]).map((m) => (
+                    <div key={m.key}>
+                      <label className="text-xs text-muted-foreground block mb-1">{m.label}</label>
+                      <input
+                        value={settings.models[m.key]}
+                        onChange={(e) => updateSettings({ models: { ...settings.models, [m.key]: e.target.value } })}
+                        placeholder={m.placeholder}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="bg-card border border-border rounded-2xl p-5 mb-4">
+                <h3 className="font-semibold text-sm mb-3 flex items-center gap-2"><Settings className="w-4 h-4 text-violet-400" />Orchestrazione</h3>
+                <div className="space-y-3">
+                  {[
+                    { key: "autoReview", label: "Auto-Review (Opus revisiona l'output)", value: settings.autoReview },
+                    { key: "autoFix", label: "Auto-Fix (corregge issue critiche/alte)", value: settings.autoFix },
+                    { key: "parallelExecution", label: "Esecuzione Parallela (Sonnet + Codex)", value: settings.parallelExecution },
+                  ].map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={() => updateSettings({ [t.key]: !t.value })}
+                      className="w-full flex items-center justify-between py-2"
+                    >
+                      <span className="text-sm">{t.label}</span>
+                      {t.value ? (
+                        <ToggleRight className="w-6 h-6 text-amber-400" />
+                      ) : (
+                        <ToggleLeft className="w-6 h-6 text-muted-foreground" />
+                      )}
+                    </button>
+                  ))}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Codex Reasoning Effort</label>
+                    <div className="flex gap-2">
+                      {(["low", "medium", "high"] as const).map((level) => (
+                        <button
+                          key={level}
+                          onClick={() => updateSettings({ codexReasoningEffort: level })}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            settings.codexReasoningEffort === level
+                              ? "bg-amber-500/10 text-amber-400 border border-amber-500/30"
+                              : "bg-muted text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -581,11 +883,15 @@ export default function AIDevStudioPage() {
       {/* ── Mobile bottom nav ── */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-md border-t border-border">
         <div className="flex justify-around items-center py-1.5 px-1">
-          {mobileNav.map(item => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const active = page === item.key;
             return (
-              <button key={item.key} onClick={() => setPage(item.key)} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all ${active ? "text-amber-400" : "text-muted-foreground"}`}>
+              <button
+                key={item.key}
+                onClick={() => setPage(item.key)}
+                className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all ${active ? "text-amber-400" : "text-muted-foreground"}`}
+              >
                 <Icon className="w-5 h-5" />
                 <span className="text-[10px] font-medium">{item.label}</span>
               </button>
@@ -593,6 +899,121 @@ export default function AIDevStudioPage() {
           })}
         </div>
       </nav>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PIPELINE VISUALIZATION COMPONENT
+   ═══════════════════════════════════════════════════════════ */
+
+function PipelineViz({ pipeline, settings }: { pipeline: PipelineProgress; settings: UserSettings }) {
+  const taskInfo = ROUTING_TABLE[pipeline.taskType];
+
+  return (
+    <div className="bg-card/50 border border-border rounded-xl p-4 space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span className="text-xs font-semibold">Pipeline: <span className="font-mono text-amber-400">{pipeline.taskType}</span></span>
+        </div>
+        {pipeline.totalLatencyMs && (
+          <span className="text-[10px] text-muted-foreground">
+            {(pipeline.totalLatencyMs / 1000).toFixed(1)}s · {pipeline.totalTokens?.toLocaleString()} tok
+            {pipeline.totalCost !== undefined && ` · $${pipeline.totalCost.toFixed(4)}`}
+          </span>
+        )}
+      </div>
+
+      {/* Triage */}
+      {pipeline.triageLatencyMs !== undefined && (
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="text-green-400">🐇</span>
+          <span className="text-muted-foreground">Triage:</span>
+          <span className="font-mono text-amber-400">{pipeline.taskType}</span>
+          <span className="text-muted-foreground">({pipeline.triageLatencyMs}ms)</span>
+        </div>
+      )}
+
+      {/* Steps */}
+      <div className="space-y-2">
+        {pipeline.steps.map((step, i) => {
+          const info = AGENT_INFO[step.agent];
+          const isRunning = step.status === "running";
+          const isDone = step.status === "done";
+          const isError = step.status === "error";
+
+          return (
+            <div key={i} className="border border-border rounded-lg overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2 bg-card/80">
+                <div
+                  className="w-6 h-6 rounded-md flex items-center justify-center text-xs"
+                  style={{ backgroundColor: info.color + "15" }}
+                >
+                  {info.emoji}
+                </div>
+                <span className="text-xs font-medium" style={{ color: info.color }}>
+                  {info.name}
+                </span>
+                <span className="text-[10px] text-muted-foreground">{step.role}</span>
+                {step.parallel && <span className="text-[9px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded">parallel</span>}
+                <div className="flex-1" />
+                {isRunning && <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />}
+                {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />}
+                {isError && <AlertCircle className="w-3.5 h-3.5 text-red-400" />}
+                {isDone && step.latencyMs && (
+                  <span className="text-[10px] text-muted-foreground">{(step.latencyMs / 1000).toFixed(1)}s</span>
+                )}
+                {isDone && step.inputTokens && step.outputTokens && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {step.inputTokens + step.outputTokens} tok
+                  </span>
+                )}
+              </div>
+              {(isRunning || isDone || isError) && step.content && (
+                <div className="px-3 py-2 max-h-32 overflow-y-auto">
+                  <pre className="text-[11px] font-mono whitespace-pre-wrap text-foreground/70 leading-relaxed">
+                    {step.content.length > 800 ? step.content.slice(0, 800) + "..." : step.content}
+                  </pre>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Review */}
+      {pipeline.reviewResult && (
+        <div className={`rounded-lg p-3 ${pipeline.reviewResult.verdict === "APPROVED" ? "bg-green-500/5 border border-green-500/20" : "bg-amber-500/5 border border-amber-500/20"}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm">{pipeline.reviewResult.verdict === "APPROVED" ? "✅" : "⚠️"}</span>
+            <span className="text-xs font-semibold">
+              Review: {pipeline.reviewResult.verdict} — {pipeline.reviewResult.score}/10
+            </span>
+          </div>
+          {pipeline.reviewResult.summary && (
+            <p className="text-[11px] text-muted-foreground">{pipeline.reviewResult.summary}</p>
+          )}
+          {pipeline.reviewResult.issues && pipeline.reviewResult.issues.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {pipeline.reviewResult.issues.map((issue, i) => (
+                <div key={i} className="text-[10px] flex items-start gap-1.5">
+                  <span className={
+                    issue.severity === "critical" ? "text-red-400" :
+                    issue.severity === "high" ? "text-orange-400" :
+                    issue.severity === "medium" ? "text-amber-400" :
+                    "text-muted-foreground"
+                  }>
+                    [{issue.severity}]
+                  </span>
+                  <span className="text-muted-foreground">{issue.problem}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
