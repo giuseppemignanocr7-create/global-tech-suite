@@ -35,14 +35,12 @@ const AGENT_COLORS: Record<AgentId, string> = {
   opus: "#8b5cf6",
   sonnet: "#ec4899",
   codex: "#06b6d4",
-  haiku: "#22c55e",
 };
 
 const AGENT_EMOJI: Record<AgentId, string> = {
   opus: "🧠",
   sonnet: "🎨",
   codex: "⚡",
-  haiku: "🐇",
 };
 
 function extractCodeBlocks(text: string): GeneratedFile[] {
@@ -254,7 +252,7 @@ export default function AIDevStudioPage() {
     setIsRunning(true);
 
     const assistantId = uid();
-    const pipeline: PipelineProgress = { taskType: "complex_feature" as TaskType, steps: [] };
+    const pipeline: PipelineProgress = { taskType: "standard", steps: [] };
 
     setMessages((prev) => [
       ...prev,
@@ -307,9 +305,6 @@ export default function AIDevStudioPage() {
             try {
               const data = JSON.parse(line.slice(6));
               switch (eventType) {
-                case "triage_done":
-                  currentPipeline = { ...currentPipeline, taskType: data.taskType, triageLatencyMs: data.latencyMs };
-                  break;
                 case "pipeline":
                   currentPipeline = {
                     ...currentPipeline,
@@ -385,9 +380,7 @@ export default function AIDevStudioPage() {
                             ? settings.models.codex
                             : s.agent === "opus"
                             ? settings.models.opus
-                            : s.agent === "sonnet"
-                            ? settings.models.sonnet
-                            : settings.models.haiku;
+                            : settings.models.sonnet;
                         return sum + estimateCost(model, s.inputTokens, s.outputTokens);
                       }
                       return sum;
@@ -412,7 +405,7 @@ export default function AIDevStudioPage() {
                     ...currentPipeline,
                     steps: [
                       ...currentPipeline.steps,
-                      { agent: "opus", role: "plan", status: "error", content: data.message } as PipelineStepProgress,
+                      { agent: "opus", role: "thinking", status: "error", content: data.message } as PipelineStepProgress,
                     ],
                   };
                   break;
@@ -979,7 +972,6 @@ export default function AIDevStudioPage() {
                   {([
                     { key: "opus" as const, label: "🧠 Opus (CTO)", placeholder: "claude-sonnet-4-20250514" },
                     { key: "sonnet" as const, label: "🎨 Sonnet (Design)", placeholder: "claude-sonnet-4-20250514" },
-                    { key: "haiku" as const, label: "🐇 Haiku (Triage)", placeholder: "claude-3-5-haiku-20241022" },
                     { key: "codex" as const, label: "⚡ Codex (Dev)", placeholder: "gpt-4o" },
                   ]).map((m) => (
                     <div key={m.key}>
@@ -1088,16 +1080,6 @@ function PipelineViz({ pipeline, settings }: { pipeline: PipelineProgress; setti
         )}
       </div>
 
-      {/* Triage */}
-      {pipeline.triageLatencyMs !== undefined && (
-        <div className="flex items-center gap-2 text-[11px]">
-          <span className="text-green-400">🐇</span>
-          <span className="text-muted-foreground">Triage:</span>
-          <span className="font-mono text-amber-400">{pipeline.taskType}</span>
-          <span className="text-muted-foreground">({pipeline.triageLatencyMs}ms)</span>
-        </div>
-      )}
-
       {/* Steps */}
       <div className="space-y-2">
         {pipeline.steps.map((step, i) => {
@@ -1118,7 +1100,7 @@ function PipelineViz({ pipeline, settings }: { pipeline: PipelineProgress; setti
                 <span className="text-xs font-medium" style={{ color: info.color }}>
                   {info.name}
                 </span>
-                <span className="text-[10px] text-muted-foreground">{step.role}</span>
+                <span className="text-[10px] text-muted-foreground">{step.role === "thinking" ? "ragionamento" : step.role === "design" ? "design" : step.role === "code" ? "codice" : "review"}</span>
                 {step.parallel && <span className="text-[9px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded">parallel</span>}
                 <div className="flex-1" />
                 {isRunning && <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />}
@@ -1136,7 +1118,7 @@ function PipelineViz({ pipeline, settings }: { pipeline: PipelineProgress; setti
               {(isRunning || isDone || isError) && step.content && (
                 <div className="px-3 py-2 max-h-32 overflow-y-auto">
                   <pre className="text-[11px] font-mono whitespace-pre-wrap text-foreground/70 leading-relaxed">
-                    {step.content.length > 800 ? step.content.slice(0, 800) + "..." : step.content}
+                    {step.content.length > 1500 ? step.content.slice(0, 1500) + "..." : step.content}
                   </pre>
                 </div>
               )}

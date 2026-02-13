@@ -1,18 +1,15 @@
 /* ═══════════════════════════════════════════════════════════
    GiuseCoder — SSE Orchestration Endpoint
-   Streams pipeline progress events back to the client.
+   Pipeline: Opus thinks → Sonnet designs + GPT codes → Opus reviews
    ═══════════════════════════════════════════════════════════ */
 
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import { ROUTING_TABLE } from "@/lib/ai-devstudio/routing";
-import { TRIAGE_PROMPT, buildAgentPrompt, buildUserMessage } from "@/lib/ai-devstudio/prompts";
+import { buildAgentPrompt, buildUserMessage } from "@/lib/ai-devstudio/prompts";
 import type {
-  TaskType,
   AgentId,
   StepRole,
-  PipelineStep,
   OrchestrateRequest,
   UserSettings,
 } from "@/lib/ai-devstudio/types";
@@ -65,7 +62,6 @@ async function callOpenAI(
   model: string,
   systemPrompt: string,
   userMessage: string,
-  reasoningEffort: string,
   onToken: (t: string) => void
 ): Promise<{ content: string; inputTokens: number; outputTokens: number }> {
   const client = new OpenAI({ apiKey });
@@ -100,7 +96,7 @@ async function callOpenAI(
   return { content, inputTokens, outputTokens };
 }
 
-async function callAgent(
+function callAgent(
   agent: AgentId,
   role: StepRole,
   userMessage: string,
@@ -110,33 +106,23 @@ async function callAgent(
   previousOutputs: { agent: string; content: string }[],
   onToken: (t: string) => void
 ): Promise<{ content: string; inputTokens: number; outputTokens: number }> {
-  const systemPrompt = buildAgentPrompt(agent, role, planOutput);
+  const systemPrompt = buildAgentPrompt(agent, role);
   const msg = buildUserMessage(agent, role, userMessage, context, planOutput, previousOutputs);
 
   if (agent === "codex") {
-    return callOpenAI(
-      settings.openaiApiKey,
-      settings.models.codex,
-      systemPrompt,
-      msg,
-      settings.codexReasoningEffort,
-      onToken
-    );
+    if (!settings.openaiApiKey) {
+      // Fallback: use Anthropic Sonnet for code too if no OpenAI key
+      return callAnthropic(settings.anthropicApiKey, settings.models.sonnet, systemPrompt, msg, onToken);
+    }
+    return callOpenAI(settings.openaiApiKey, settings.models.codex, systemPrompt, msg, onToken);
   }
 
   const modelMap: Record<string, string> = {
     opus: settings.models.opus,
     sonnet: settings.models.sonnet,
-    haiku: settings.models.haiku,
   };
 
-  return callAnthropic(
-    settings.anthropicApiKey,
-    modelMap[agent] || settings.models.sonnet,
-    systemPrompt,
-    msg,
-    onToken
-  );
+  return callAnthropic(settings.anthropicApiKey, modelMap[agent] || settings.models.sonnet, systemPrompt, msg, onToken);
 }
 
 /* ── main handler ── */
@@ -158,170 +144,133 @@ export async function POST(req: NextRequest) {
       const t0 = Date.now();
 
       try {
-        /* ─── STEP 1: TRIAGE ─── */
-        send("triage_start", {});
-        const triageT0 = Date.now();
-        let taskType: TaskType = "complex_feature";
-
-        try {
-          const triageResult = await callAnthropic(
-            settings.anthropicApiKey,
-            settings.models.haiku,
-            TRIAGE_PROMPT,
-            `${message}\n\nContext: ${context}`,
-            () => {} // no token streaming for triage
-          );
-          const cleaned = triageResult.content.trim().toLowerCase().replace(/[^a-z_]/g, "");
-          if (cleaned in ROUTING_TABLE) {
-            taskType = cleaned as TaskType;
-          }
-          send("triage_done", {
-            taskType,
-            latencyMs: Date.now() - triageT0,
-            tokens: triageResult.inputTokens + triageResult.outputTokens,
-          });
-        } catch (e: unknown) {
-          const errMsg = e instanceof Error ? e.message : String(e);
-          send("triage_done", {
-            taskType,
-            latencyMs: Date.now() - triageT0,
-            error: errMsg,
-            fallback: true,
-          });
-        }
-
-        /* ─── STEP 2: ROUTE ─── */
-        const pipeline = ROUTING_TABLE[taskType];
+        /* ─── Send pipeline structure ─── */
         send("pipeline", {
-          taskType,
-          description: pipeline.description,
-          steps: pipeline.steps.map((s) => ({
-            agent: s.agent,
-            role: s.role,
-            parallel: s.parallel,
-          })),
-          estimatedTime: pipeline.estimatedTime,
-          estimatedCost: pipeline.estimatedCost,
+          taskType: "standard",
+          description: "Opus pensa → Sonnet design + GPT code → Opus review",
+          steps: [
+            { agent: "opus", role: "thinking" },
+            { agent: "sonnet", role: "design", parallel: "build" },
+            { agent: "codex", role: "code", parallel: "build" },
+            { agent: "opus", role: "review" },
+          ],
         });
 
-        /* ─── STEP 3: EXECUTE ─── */
         let planOutput: string | undefined;
         const allOutputs: { agent: string; content: string }[] = [];
         let totalInputTokens = 0;
         let totalOutputTokens = 0;
 
-        // Group steps: sequential and parallel groups
-        const stepGroups: PipelineStep[][] = [];
-        let i = 0;
-        while (i < pipeline.steps.length) {
-          const step = pipeline.steps[i];
-          if (step.parallel) {
-            const group: PipelineStep[] = [];
-            const groupId = step.parallel;
-            while (i < pipeline.steps.length && pipeline.steps[i].parallel === groupId) {
-              group.push(pipeline.steps[i]);
-              i++;
-            }
-            stepGroups.push(group);
-          } else {
-            stepGroups.push([step]);
-            i++;
-          }
+        /* ─── STEP 1: OPUS THINKS ─── */
+        send("step_start", { agent: "opus", role: "thinking" });
+        const thinkT0 = Date.now();
+
+        try {
+          const thinkResult = await callAgent(
+            "opus", "thinking", message, context, settings,
+            undefined, [],
+            (token) => send("token", { agent: "opus", text: token })
+          );
+
+          planOutput = thinkResult.content;
+          totalInputTokens += thinkResult.inputTokens;
+          totalOutputTokens += thinkResult.outputTokens;
+          allOutputs.push({ agent: "opus", content: thinkResult.content });
+
+          send("step_done", {
+            agent: "opus", role: "thinking",
+            latencyMs: Date.now() - thinkT0,
+            inputTokens: thinkResult.inputTokens,
+            outputTokens: thinkResult.outputTokens,
+          });
+        } catch (e: unknown) {
+          send("step_error", { agent: "opus", role: "thinking", error: (e as Error).message });
+          controller.close();
+          return;
         }
 
-        for (const group of stepGroups) {
-          if (group.length === 1) {
-            // Sequential step
-            const step = group[0];
-            send("step_start", { agent: step.agent, role: step.role, parallel: false });
-            const stepT0 = Date.now();
+        /* ─── STEP 2: SONNET + GPT IN PARALLEL ─── */
+        send("step_start", { agent: "sonnet", role: "design", parallel: true });
+        send("step_start", { agent: "codex", role: "code", parallel: true });
 
-            try {
-              const result = await callAgent(
-                step.agent,
-                step.role,
-                message,
-                context,
-                settings,
-                planOutput,
-                allOutputs,
-                (token) => send("token", { agent: step.agent, text: token })
-              );
+        const [sonnetResult, codexResult] = await Promise.allSettled([
+          (async () => {
+            const st0 = Date.now();
+            const r = await callAgent(
+              "sonnet", "design", message, context, settings,
+              planOutput, allOutputs,
+              (token) => send("token", { agent: "sonnet", text: token })
+            );
+            return { ...r, latencyMs: Date.now() - st0 };
+          })(),
+          (async () => {
+            const ct0 = Date.now();
+            const r = await callAgent(
+              "codex", "code", message, context, settings,
+              planOutput, allOutputs,
+              (token) => send("token", { agent: "codex", text: token })
+            );
+            return { ...r, latencyMs: Date.now() - ct0 };
+          })(),
+        ]);
 
-              const latencyMs = Date.now() - stepT0;
-              totalInputTokens += result.inputTokens;
-              totalOutputTokens += result.outputTokens;
-              allOutputs.push({ agent: step.agent, content: result.content });
+        if (sonnetResult.status === "fulfilled") {
+          const sr = sonnetResult.value;
+          totalInputTokens += sr.inputTokens;
+          totalOutputTokens += sr.outputTokens;
+          allOutputs.push({ agent: "sonnet", content: sr.content });
+          send("step_done", {
+            agent: "sonnet", role: "design",
+            latencyMs: sr.latencyMs,
+            inputTokens: sr.inputTokens, outputTokens: sr.outputTokens,
+          });
+        } else {
+          send("step_error", { agent: "sonnet", role: "design", error: sonnetResult.reason?.message || String(sonnetResult.reason) });
+        }
 
-              if (step.agent === "opus" && step.role !== "review") {
-                planOutput = result.content;
-              }
+        if (codexResult.status === "fulfilled") {
+          const cr = codexResult.value;
+          totalInputTokens += cr.inputTokens;
+          totalOutputTokens += cr.outputTokens;
+          allOutputs.push({ agent: "codex", content: cr.content });
+          send("step_done", {
+            agent: "codex", role: "code",
+            latencyMs: cr.latencyMs,
+            inputTokens: cr.inputTokens, outputTokens: cr.outputTokens,
+          });
+        } else {
+          send("step_error", { agent: "codex", role: "code", error: codexResult.reason?.message || String(codexResult.reason) });
+        }
 
-              send("step_done", {
-                agent: step.agent,
-                role: step.role,
-                latencyMs,
-                inputTokens: result.inputTokens,
-                outputTokens: result.outputTokens,
-              });
+        /* ─── STEP 3: OPUS REVIEW ─── */
+        if (settings.autoReview) {
+          send("step_start", { agent: "opus", role: "review" });
+          const revT0 = Date.now();
 
-              // If this is a review step, parse and send review result
-              if (step.role === "review") {
-                send("review", parseReview(result.content));
-              }
-            } catch (e: unknown) {
-              const errMsg = e instanceof Error ? e.message : String(e);
-              send("step_error", { agent: step.agent, role: step.role, error: errMsg });
-            }
-          } else {
-            // Parallel steps
-            for (const step of group) {
-              send("step_start", { agent: step.agent, role: step.role, parallel: true });
-            }
-
-            const results = await Promise.allSettled(
-              group.map(async (step) => {
-                const stepT0 = Date.now();
-                const result = await callAgent(
-                  step.agent,
-                  step.role,
-                  message,
-                  context,
-                  settings,
-                  planOutput,
-                  allOutputs,
-                  (token) => send("token", { agent: step.agent, text: token })
-                );
-                return { step, result, latencyMs: Date.now() - stepT0 };
-              })
+          try {
+            const reviewResult = await callAgent(
+              "opus", "review", message, context, settings,
+              planOutput, allOutputs,
+              (token) => send("token", { agent: "opus", text: token })
             );
 
-            for (const r of results) {
-              if (r.status === "fulfilled") {
-                const { step, result, latencyMs } = r.value;
-                totalInputTokens += result.inputTokens;
-                totalOutputTokens += result.outputTokens;
-                allOutputs.push({ agent: step.agent, content: result.content });
-                send("step_done", {
-                  agent: step.agent,
-                  role: step.role,
-                  latencyMs,
-                  inputTokens: result.inputTokens,
-                  outputTokens: result.outputTokens,
-                });
-              } else {
-                const step = group[results.indexOf(r)];
-                send("step_error", {
-                  agent: step.agent,
-                  role: step.role,
-                  error: r.reason?.message || String(r.reason),
-                });
-              }
-            }
+            totalInputTokens += reviewResult.inputTokens;
+            totalOutputTokens += reviewResult.outputTokens;
+
+            send("step_done", {
+              agent: "opus", role: "review",
+              latencyMs: Date.now() - revT0,
+              inputTokens: reviewResult.inputTokens,
+              outputTokens: reviewResult.outputTokens,
+            });
+
+            send("review", parseReview(reviewResult.content));
+          } catch (e: unknown) {
+            send("step_error", { agent: "opus", role: "review", error: (e as Error).message });
           }
         }
 
-        /* ─── STEP 4: DONE ─── */
+        /* ─── DONE ─── */
         send("done", {
           totalLatencyMs: Date.now() - t0,
           totalInputTokens,
@@ -329,8 +278,7 @@ export async function POST(req: NextRequest) {
           totalTokens: totalInputTokens + totalOutputTokens,
         });
       } catch (e: unknown) {
-        const errMsg = e instanceof Error ? e.message : String(e);
-        send("error", { message: errMsg });
+        send("error", { message: (e as Error).message });
       } finally {
         controller.close();
       }

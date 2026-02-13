@@ -2,44 +2,15 @@
    GiuseCoder — TypeScript Types
    ═══════════════════════════════════════════════════════════ */
 
-export type AgentId = "opus" | "sonnet" | "codex" | "haiku";
+export type AgentId = "opus" | "sonnet" | "codex";
 
-export type TaskType =
-  | "quick_task"
-  | "completion"
-  | "commit_message"
-  | "code_edit"
-  | "refactor"
-  | "ui_component"
-  | "css_styling"
-  | "animation"
-  | "explain"
-  | "review"
-  | "architecture"
-  | "code_generation"
-  | "fix_error"
-  | "test_generation"
-  | "ui_page"
-  | "design_system"
-  | "complex_feature"
-  | "landing_page"
-  | "full_app"
-  | "documentation";
+export type TaskType = "standard";
 
 export type StepRole =
-  | "execute"
-  | "complete"
-  | "code"
+  | "thinking"
   | "design"
-  | "plan"
-  | "analyze"
-  | "review"
-  | "plan_ui"
-  | "plan_design_system"
-  | "plan_tests"
-  | "plan_docs"
-  | "analyze_bug"
-  | "fix";
+  | "code"
+  | "review";
 
 export interface PipelineStep {
   agent: AgentId;
@@ -107,7 +78,7 @@ export interface PipelineStepProgress {
 export interface PipelineProgress {
   taskType: TaskType;
   steps: PipelineStepProgress[];
-  triageLatencyMs?: number;
+  thinking?: string;
   totalLatencyMs?: number;
   totalCost?: number;
   totalTokens?: number;
@@ -127,7 +98,6 @@ export interface UserSettings {
   models: {
     opus: string;
     sonnet: string;
-    haiku: string;
     codex: string;
   };
   autoReview: boolean;
@@ -143,7 +113,6 @@ export const DEFAULT_SETTINGS: UserSettings = {
   models: {
     opus: "claude-sonnet-4-20250514",
     sonnet: "claude-sonnet-4-20250514",
-    haiku: "claude-3-5-haiku-20241022",
     codex: "gpt-4o",
   },
   autoReview: true,
@@ -158,7 +127,6 @@ export const MODEL_COSTS: Record<string, [number, number]> = {
   "claude-sonnet-4-20250514": [3, 15],
   "claude-3-5-sonnet-20241022": [3, 15],
   "claude-3-opus-20240229": [15, 75],
-  "claude-3-5-haiku-20241022": [0.8, 4],
   "gpt-4o": [2.5, 10],
   "gpt-4o-mini": [0.15, 0.6],
 };
