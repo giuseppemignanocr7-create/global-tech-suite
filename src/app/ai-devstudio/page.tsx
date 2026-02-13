@@ -103,6 +103,12 @@ export default function AIDevStudioPage() {
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [sessionStats, setSessionStats] = useState({ requests: 0, tokens: 0, cost: 0 });
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [keyStatus, setKeyStatus] = useState<{
+    anthropic?: { ok: boolean; error?: string; model?: string };
+    openai?: { ok: boolean; error?: string; model?: string };
+  }>({});
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -115,7 +121,40 @@ export default function AIDevStudioPage() {
       saveSettings(next);
       return next;
     });
+    setSaved(false);
+    setKeyStatus({});
   }, []);
+
+  const handleSaveKeys = useCallback(() => {
+    saveSettings(settings);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  }, [settings]);
+
+  const handleVerifyKeys = useCallback(async () => {
+    setVerifying(true);
+    setKeyStatus({});
+    try {
+      const resp = await fetch("/api/ai-devstudio/verify-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          anthropicApiKey: settings.anthropicApiKey,
+          openaiApiKey: settings.openaiApiKey,
+          models: settings.models,
+        }),
+      });
+      const data = await resp.json();
+      setKeyStatus(data);
+    } catch (e: unknown) {
+      setKeyStatus({
+        anthropic: { ok: false, error: (e as Error).message },
+        openai: { ok: false, error: (e as Error).message },
+      });
+    } finally {
+      setVerifying(false);
+    }
+  }, [settings]);
 
   /* ── orchestrate ── */
   const handleSend = useCallback(async () => {
@@ -789,23 +828,71 @@ export default function AIDevStudioPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs text-muted-foreground block mb-1">Anthropic API Key (per Opus, Sonnet, Haiku)</label>
-                    <input
-                      type="password"
-                      value={settings.anthropicApiKey}
-                      onChange={(e) => updateSettings({ anthropicApiKey: e.target.value })}
-                      placeholder="sk-ant-..."
-                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/40"
-                    />
+                    <div className="relative">
+                      <input
+                        type="password"
+                        value={settings.anthropicApiKey}
+                        onChange={(e) => updateSettings({ anthropicApiKey: e.target.value })}
+                        placeholder="sk-ant-..."
+                        className={`w-full px-3 py-2 bg-background border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/40 pr-10 ${
+                          keyStatus.anthropic?.ok ? "border-green-500/50" : keyStatus.anthropic?.error ? "border-red-500/50" : "border-border"
+                        }`}
+                      />
+                      {keyStatus.anthropic && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {keyStatus.anthropic.ok ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <AlertCircle className="w-4 h-4 text-red-400" />}
+                        </span>
+                      )}
+                    </div>
+                    {keyStatus.anthropic?.ok && (
+                      <p className="text-[10px] text-green-400 mt-1">✓ Connesso — modello: {keyStatus.anthropic.model}</p>
+                    )}
+                    {keyStatus.anthropic?.error && (
+                      <p className="text-[10px] text-red-400 mt-1">✗ {keyStatus.anthropic.error}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground block mb-1">OpenAI API Key (per Codex/GPT)</label>
-                    <input
-                      type="password"
-                      value={settings.openaiApiKey}
-                      onChange={(e) => updateSettings({ openaiApiKey: e.target.value })}
-                      placeholder="sk-..."
-                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/40"
-                    />
+                    <label className="text-xs text-muted-foreground block mb-1">OpenAI API Key (per Codex/GPT) <span className="text-muted-foreground/50">— opzionale</span></label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        value={settings.openaiApiKey}
+                        onChange={(e) => updateSettings({ openaiApiKey: e.target.value })}
+                        placeholder="sk-..."
+                        className={`w-full px-3 py-2 bg-background border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/40 pr-10 ${
+                          keyStatus.openai?.ok ? "border-green-500/50" : keyStatus.openai?.error && settings.openaiApiKey ? "border-red-500/50" : "border-border"
+                        }`}
+                      />
+                      {keyStatus.openai && settings.openaiApiKey && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {keyStatus.openai.ok ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <AlertCircle className="w-4 h-4 text-red-400" />}
+                        </span>
+                      )}
+                    </div>
+                    {keyStatus.openai?.ok && (
+                      <p className="text-[10px] text-green-400 mt-1">✓ Connesso — modello: {keyStatus.openai.model}</p>
+                    )}
+                    {keyStatus.openai?.error && settings.openaiApiKey && (
+                      <p className="text-[10px] text-red-400 mt-1">✗ {keyStatus.openai.error}</p>
+                    )}
+                  </div>
+                  {/* Save + Verify buttons */}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={handleSaveKeys}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                        saved ? "bg-green-500/10 text-green-400 border border-green-500/30" : "bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20"
+                      }`}
+                    >
+                      {saved ? <><CheckCircle2 className="w-4 h-4" />Salvato!</> : <><Shield className="w-4 h-4" />Salva</>}
+                    </button>
+                    <button
+                      onClick={handleVerifyKeys}
+                      disabled={verifying || !settings.anthropicApiKey}
+                      className="flex-1 py-2 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-lg text-sm font-medium hover:bg-cyan-500/20 disabled:opacity-40 transition-all flex items-center justify-center gap-2"
+                    >
+                      {verifying ? <><Loader2 className="w-4 h-4 animate-spin" />Verifica...</> : <><Zap className="w-4 h-4" />Verifica Chiavi</>}
+                    </button>
                   </div>
                 </div>
               </div>
