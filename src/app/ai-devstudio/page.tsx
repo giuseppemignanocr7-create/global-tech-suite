@@ -46,29 +46,110 @@ const AGENT_EMOJI: Record<AgentId, string> = {
 };
 
 function extractCodeBlocks(text: string): GeneratedFile[] {
-  const files: GeneratedFile[] = [];
-  const regex = /```(\w+)?\n\/\/\s*filepath:\s*(.+?)\n([\s\S]*?)```/g;
+  const fileMap = new Map<string, GeneratedFile>();
+
+  // Match ```lang\n// filepath: path\n...code...```
+  const fpRegex = /```(\w+)?\n\/\/\s*filepath:\s*(.+?)\n([\s\S]*?)```/g;
   let m;
-  while ((m = regex.exec(text)) !== null) {
-    files.push({
-      language: m[1] || "typescript",
-      path: m[2].trim(),
-      content: m[3].trim(),
-    });
+  while ((m = fpRegex.exec(text)) !== null) {
+    const path = m[2].trim();
+    const content = m[3].trim();
+    const existing = fileMap.get(path);
+    if (!existing || content.length > existing.content.length) {
+      fileMap.set(path, { language: m[1] || "typescript", path, content });
+    }
   }
-  if (files.length === 0) {
+
+  // Fallback: any code block
+  if (fileMap.size === 0) {
     const simpleRegex = /```(\w+)?\n([\s\S]*?)```/g;
     let idx = 0;
     while ((m = simpleRegex.exec(text)) !== null) {
-      files.push({
-        language: m[1] || "typescript",
-        path: `generated_${idx}.${m[1] === "tsx" ? "tsx" : m[1] === "css" ? "css" : "ts"}`,
-        content: m[2].trim(),
-      });
+      const lang = m[1] || "typescript";
+      const content = m[2].trim();
+      if (content.length < 20) continue; // skip trivial blocks
+      const path = `generated_${idx}.${lang === "tsx" ? "tsx" : lang === "css" ? "css" : lang === "html" ? "html" : "ts"}`;
+      const existing = fileMap.get(path);
+      if (!existing || content.length > existing.content.length) {
+        fileMap.set(path, { language: lang, path, content });
+      }
       idx++;
     }
   }
-  return files;
+
+  return Array.from(fileMap.values());
+}
+
+/** Build a self-contained HTML page from generated files for live preview */
+function buildPreviewHtml(files: GeneratedFile[]): string {
+  // Collect CSS
+  const cssFiles = files.filter((f) => f.language === "css" || f.path.endsWith(".css"));
+  const cssBlock = cssFiles.map((f) => f.content).join("\n");
+
+  // Collect TSX/JSX/HTML
+  const mainFile =
+    files.find((f) => f.path.includes("App")) ||
+    files.find((f) => f.path.includes("Calculator")) ||
+    files.find((f) => f.path.includes("page")) ||
+    files.find((f) => f.language === "tsx" || f.language === "jsx" || f.language === "html") ||
+    files[0];
+
+  if (!mainFile) return "";
+
+  // If it's pure HTML, render directly
+  if (mainFile.language === "html" || mainFile.content.trim().startsWith("<!") || mainFile.content.trim().startsWith("<html")) {
+    return mainFile.content;
+  }
+
+  // Otherwise build a code-display page showing all files nicely
+  const allCode = files
+    .map(
+      (f) =>
+        `<div class="file-block">
+          <div class="file-header">${escapeHtml(f.path)} <span class="lang">${f.language}</span></div>
+          <pre><code>${escapeHtml(f.content)}</code></pre>
+        </div>`
+    )
+    .join("\n");
+
+  return `<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GiuseCoder Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0f172a; color: #e2e8f0; padding: 24px; }
+  h1 { font-size: 18px; color: #fbbf24; margin-bottom: 8px; font-weight: 700; }
+  .subtitle { font-size: 12px; color: #64748b; margin-bottom: 24px; }
+  .file-block { background: #1e293b; border: 1px solid #334155; border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+  .file-header { padding: 10px 16px; background: #1e293b; border-bottom: 1px solid #334155; font-size: 13px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; }
+  .lang { font-size: 10px; background: #334155; padding: 2px 8px; border-radius: 6px; color: #fbbf24; }
+  pre { padding: 16px; overflow-x: auto; font-size: 12px; line-height: 1.6; }
+  code { color: #e2e8f0; }
+  .stats { display: flex; gap: 16px; margin-bottom: 20px; }
+  .stat { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 16px; flex: 1; text-align: center; }
+  .stat-value { font-size: 20px; font-weight: 700; color: #fbbf24; }
+  .stat-label { font-size: 10px; color: #64748b; margin-top: 2px; }
+  ${cssBlock}
+</style>
+</head>
+<body>
+  <h1>\u26a1 GiuseCoder Output</h1>
+  <p class="subtitle">${files.length} file generati</p>
+  <div class="stats">
+    <div class="stat"><div class="stat-value">${files.length}</div><div class="stat-label">File</div></div>
+    <div class="stat"><div class="stat-value">${files.reduce((s, f) => s + f.content.split("\n").length, 0)}</div><div class="stat-label">Righe</div></div>
+    <div class="stat"><div class="stat-value">${Math.round(files.reduce((s, f) => s + f.content.length, 0) / 1024)}KB</div><div class="stat-label">Dimensione</div></div>
+  </div>
+  ${allCode}
+</body>
+</html>`;
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function loadSettings(): UserSettings {
@@ -317,11 +398,11 @@ export default function AIDevStudioPage() {
                     tokens: prev.tokens + (data.totalTokens || 0),
                     cost: prev.cost + totalCostEst,
                   }));
-                  // Extract generated files from all agent outputs
+                  // Extract generated files from all agent outputs (deduped)
                   const allText = Object.values(agentTexts).join("\n\n");
                   allFiles = extractCodeBlocks(allText);
                   if (allFiles.length > 0) {
-                    setGeneratedFiles((prev) => [...prev, ...allFiles]);
+                    setGeneratedFiles(allFiles);
                     setActiveFileIdx(0);
                   }
                   break;
@@ -689,31 +770,25 @@ export default function AIDevStudioPage() {
               </div>
               <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><RefreshCw className="w-4 h-4" /></button>
             </div>
-            {/* Preview area */}
-            <div className="flex-1 bg-[#1a1a2e] overflow-auto flex items-start justify-center p-4">
+            {/* Preview area — live iframe */}
+            <div className="flex-1 bg-[#0f172a] overflow-auto flex items-start justify-center p-4">
               <div
                 className="bg-white rounded-lg shadow-2xl overflow-hidden transition-all duration-300"
                 style={{
                   width: previewDevice === "desktop" ? "100%" : previewDevice === "tablet" ? 768 : 375,
                   maxWidth: "100%",
-                  minHeight: previewDevice === "mobile" ? 667 : previewDevice === "tablet" ? 500 : 400,
+                  height: previewDevice === "mobile" ? 667 : previewDevice === "tablet" ? 500 : "100%",
+                  minHeight: 400,
                 }}
               >
                 {generatedFiles.length > 0 ? (
-                  <div className="p-6">
-                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                      <p className="text-gray-500 text-xs mb-2">Preview dei file generati:</p>
-                      {generatedFiles.map((f, i) => (
-                        <div key={i} className="flex items-center gap-2 py-1">
-                          <div className="w-2 h-2 rounded-full bg-green-500" />
-                          <span className="text-sm text-gray-700 font-mono">{f.path}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <pre className="text-xs font-mono text-gray-800 bg-gray-50 rounded-lg p-4 overflow-auto max-h-[60vh]">
-                      {generatedFiles[0]?.content || "Nessun contenuto"}
-                    </pre>
-                  </div>
+                  <iframe
+                    srcDoc={buildPreviewHtml(generatedFiles)}
+                    title="GiuseCoder Preview"
+                    className="w-full h-full border-0"
+                    sandbox="allow-scripts"
+                    style={{ minHeight: previewDevice === "mobile" ? 667 : previewDevice === "tablet" ? 500 : 400 }}
+                  />
                 ) : (
                   <div className="flex items-center justify-center h-full min-h-[300px] text-gray-400">
                     <div className="text-center">
