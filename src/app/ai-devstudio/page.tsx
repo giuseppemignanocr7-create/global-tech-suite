@@ -593,8 +593,8 @@ export default function AIDevStudioPage() {
                                 ))}
                               </div>
                             )}
-                            {/* Plain text fallback if no pipeline */}
-                            {!msg.pipeline && msg.content && (
+                            {/* Plain text fallback ONLY if no pipeline */}
+                            {!msg.pipeline && !msg.files?.length && msg.content && (
                               <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
                             )}
                           </div>
